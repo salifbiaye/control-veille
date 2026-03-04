@@ -30,6 +30,7 @@ const DEFAULT_FEATURES: PlanFeatures = {
     articles: 100,
     tasks: 100,
     resources: 100,
+    isPopular: false,
 }
 
 export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "default", defaultPrice }: CreatePlanDialogProps) {
@@ -232,7 +233,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <Input
                                         required
                                         type="number"
-                                        value={formData.features.techWatches}
+                                        value={formData.features.techWatches as any}
                                         onChange={e => updateFeature('techWatches', parseInt(e.target.value))}
                                         className="settings-input"
                                     />
@@ -247,7 +248,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                         type="number"
                                         min={0.1}
                                         step={0.1}
-                                        value={formData.features.storage / 1073741824}
+                                        value={(formData.features.storage as number) / 1073741824}
                                         onChange={e => updateFeature('storage', (parseFloat(e.target.value) || 0) * 1073741824)}
                                         className="settings-input"
                                     />
@@ -257,7 +258,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <Input
                                         required
                                         type="number"
-                                        value={formData.features.notes}
+                                        value={formData.features.notes as any}
                                         onChange={e => updateFeature('notes', parseInt(e.target.value))}
                                         className="settings-input"
                                     />
@@ -268,7 +269,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <Input
                                         required
                                         type="number"
-                                        value={formData.features.articles || 0}
+                                        value={formData.features.articles as any}
                                         onChange={e => updateFeature('articles', parseInt(e.target.value))}
                                         className="settings-input"
                                     />
@@ -278,7 +279,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <Input
                                         required
                                         type="number"
-                                        value={formData.features.tasks || 0}
+                                        value={formData.features.tasks as any}
                                         onChange={e => updateFeature('tasks', parseInt(e.target.value))}
                                         className="settings-input"
                                     />
@@ -288,7 +289,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <Input
                                         required
                                         type="number"
-                                        value={formData.features.resources || 0}
+                                        value={formData.features.resources as any}
                                         onChange={e => updateFeature('resources', parseInt(e.target.value))}
                                         className="settings-input"
                                     />
@@ -301,7 +302,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <Input
                                         required
                                         type="number"
-                                        value={formData.features.courses}
+                                        value={formData.features.courses as any}
                                         onChange={e => updateFeature('courses', parseInt(e.target.value))}
                                         className="settings-input"
                                     />
@@ -392,6 +393,22 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                             Tableaux Comparatifs
                                         </div>
                                         <div className="text-xs text-muted-foreground mt-1">Autorise la création de comparaisons IA entre technologies.</div>
+                                    </div>
+                                </label>
+
+                                <label className="flex items-start gap-3 p-4 rounded-lg border border-primary/20 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                        checked={!!formData.features.isPopular}
+                                        onChange={e => updateFeature('isPopular', e.target.checked)}
+                                    />
+                                    <div>
+                                        <div className="text-sm font-bold flex items-center gap-2 text-primary">
+                                            <Rocket className="w-4 h-4" />
+                                            Badge "Populaire"
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-1">Affiche un badge "POPULAIRE" sur cette offre pour attirer l'attention.</div>
                                     </div>
                                 </label>
 

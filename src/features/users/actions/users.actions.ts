@@ -2,6 +2,8 @@
 
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/session'
+import { revalidatePath } from 'next/cache'
+import { stripe } from '@/lib/stripe'
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -26,8 +28,9 @@ export type ClientUser = {
     createdAt: Date
     techWatchCount: number
     storageUsed: number
-    storageLimit: number          // dynamique depuis plan.features.storage
+    storageLimit: number
     planName: string | null
+    subscriptionId: string | null
     subscriptionStatus: string | null
     isPremiumLifetime: boolean
     currentPeriodEnd: Date | null
@@ -124,16 +127,11 @@ export async function revokeAdminUser(
 // Client Users
 // ─────────────────────────────────────────────────────────────
 
-export async function getClientUsers(
-    page = 1,
-    limit = 20
-): Promise<PaginatedResult<ClientUser>> {
+export async function getClientUsers(): Promise<ClientUser[]> {
     try {
         await requirePermission('VIEW_USERS')
-        const offset = (page - 1) * limit
 
-        const [rows, countResult] = await Promise.all([
-            prisma.$queryRaw<ClientUser[]>`
+        const rows = await prisma.$queryRaw<ClientUser[]>`
         SELECT
           u.id,
           u.name,
@@ -143,35 +141,30 @@ export async function getClientUsers(
           u."storageUsed",
           u."isPremiumLifetime",
           COUNT(tw.id)::int AS "techWatchCount",
+          MAX(s.id) AS "subscriptionId",
           MAX(s.status) AS "subscriptionStatus",
           MAX(s."currentPeriodEnd") AS "currentPeriodEnd",
           BOOL_OR(s."cancelAtPeriodEnd") AS "cancelAtPeriodEnd",
           MAX(p.name) AS "planName",
           COALESCE(
-            (MAX(p.features::text)::jsonb->>'storage')::bigint,
-            536870912
+            MAX((p.features->>'storage')::bigint),
+            CASE WHEN BOOL_OR(u."isPremiumLifetime") THEN (SELECT (features->>'storage')::bigint FROM "plans" WHERE slug = 'pro' LIMIT 1) ELSE NULL END,
+            (SELECT (features->>'storage')::bigint FROM "plans" WHERE slug = 'free' LIMIT 1),
+            1073741824
           ) AS "storageLimit"
         FROM "user" u
         LEFT JOIN "TechWatch" tw ON tw."userId" = u.id
         LEFT JOIN "Subscription" s ON s."userId" = u.id AND s.status = 'active'
         LEFT JOIN "plans" p ON s."planId" = p.id
-        WHERE u.role = 'USER'
+        WHERE u.role IN ('USER', 'BANNED')
         GROUP BY u.id
         ORDER BY u."createdAt" DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `,
-            prisma.$queryRaw<[{ count: bigint }]>`SELECT COUNT(*)::int FROM "user" WHERE role = 'USER'`,
-        ])
+      `
 
-        const total = Number(countResult[0]?.count ?? 0)
-
-        return {
-            data: rows,
-            meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
-        }
+        return rows
     } catch (error) {
         console.error('[CLIENT_USERS] Error:', error)
-        return { data: [], meta: { page, limit, total: 0, totalPages: 0 } }
+        return []
     }
 }
 
@@ -186,16 +179,20 @@ export async function getClientUserById(id: string): Promise<ClientUser | null> 
         u."emailVerified",
         u."createdAt",
         u."storageUsed",
+        MAX(s.id) AS "subscriptionId",
         u."isPremiumLifetime",
-        COUNT(tw.id)::int AS "techWatchCount",
-        536870912 AS "storageLimit",
-        NULL AS "subscriptionStatus",
-        NULL AS "currentPeriodEnd",
-        false AS "cancelAtPeriodEnd",
-        NULL AS "planName"
+        MAX(p.name) AS "planName",
+        COALESCE(
+          MAX((p.features->>'storage')::bigint),
+          CASE WHEN BOOL_OR(u."isPremiumLifetime") THEN (SELECT (features->>'storage')::bigint FROM "plans" WHERE slug = 'pro' LIMIT 1) ELSE NULL END,
+          (SELECT (features->>'storage')::bigint FROM "plans" WHERE slug = 'free' LIMIT 1),
+          1073741824
+        ) AS "storageLimit"
       FROM "user" u
       LEFT JOIN "TechWatch" tw ON tw."userId" = u.id
-      WHERE u.id = ${id} AND u.role = 'USER'
+      LEFT JOIN "Subscription" s ON s."userId" = u.id AND s.status = 'active'
+      LEFT JOIN "plans" p ON s."planId" = p.id
+      WHERE u.id = ${id} AND u.role IN ('USER', 'BANNED')
       GROUP BY u.id
     `
         return rows[0] ?? null
@@ -223,11 +220,78 @@ export async function togglePremiumLifetime(
 
         await prisma.user.update({
             where: { id: userId },
-            data: { isPremiumLifetime: value } as any, // Prisma will regenerate after db push
+            data: { isPremiumLifetime: value } as any,
         })
+        revalidatePath('/dashboard/users')
         return { success: true }
     } catch (error) {
         console.error('[CLIENT_USERS] togglePremiumLifetime error:', error)
         return { success: false, error: 'Impossible de modifier le statut Premium Lifetime' }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Ban User
+// ─────────────────────────────────────────────────────────────
+
+export async function banUser(userId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        await requirePermission('EDIT_USERS')
+
+        const targetUser = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+        if (!targetUser) return { success: false, error: 'Utilisateur non trouvé' }
+
+        if (targetUser.role === 'SUPER_ADMIN' || targetUser.role === 'ADMIN') {
+            return { success: false, error: 'Impossible de bannir un administrateur' }
+        }
+
+        // 🔒 Annuler l'abonnement Stripe si présent
+        const activeSub = await prisma.subscription.findUnique({
+            where: { userId },
+            select: { stripeSubscriptionId: true, status: true }
+        })
+
+        if (activeSub && (activeSub as any).stripeSubscriptionId && activeSub.status === 'active') {
+            try {
+                await stripe.subscriptions.update((activeSub as any).stripeSubscriptionId, {
+                    cancel_at_period_end: false,
+                })
+                await stripe.subscriptions.cancel((activeSub as any).stripeSubscriptionId)
+
+                await prisma.subscription.update({
+                    where: { userId },
+                    data: { status: 'canceled' }
+                })
+            } catch (stripeError) {
+                console.error('[BAN_USER] Stripe cancellation error:', stripeError)
+                // On continue quand même le ban en base
+            }
+        }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { role: 'BANNED' }
+        })
+        revalidatePath('/dashboard/users')
+        revalidatePath('/dashboard/pricing')
+        return { success: true }
+    } catch (error) {
+        console.error('[CLIENT_USERS] banUser error:', error)
+        return { success: false, error: 'Impossible de bannir l\'utilisateur' }
+    }
+}
+
+export async function unbanUser(userId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        await requirePermission('EDIT_USERS')
+        await prisma.user.update({
+            where: { id: userId },
+            data: { role: 'USER' }
+        })
+        revalidatePath('/dashboard/users')
+        return { success: true }
+    } catch (error) {
+        console.error('[CLIENT_USERS] unbanUser error:', error)
+        return { success: false, error: 'Impossible de débannir l\'utilisateur' }
     }
 }

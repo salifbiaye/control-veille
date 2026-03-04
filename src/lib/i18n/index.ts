@@ -125,26 +125,74 @@ export const translations = {
             actions: {
                 revoke: 'Révoquer',
             },
+            filters: {
+                all: 'Tous',
+                free: 'Gratuit',
+                pro: 'Pro',
+                premium: 'Premium',
+            },
+            charts: {
+                registrations: 'Croissance des Membres',
+                registrationsDesc: 'Inscriptions quotidiennes sur les 30 derniers jours',
+                average: 'Moyenne de {val} / jour',
+                total: 'Total 30j : ',
+            }
         },
         subscriptions: {
-            search: 'Rechercher par email, nom ou plan...',
+            search: 'Rechercher un abonnement...',
             table: {
                 subscriber: 'Abonné',
                 plan: 'Plan',
-                price: 'Tarif',
+                price: 'Prix',
                 status: 'Statut',
                 renewal: 'Renouvellement',
-                empty: 'Aucune souscription trouvée sur cette page.',
-                expires: 'Expire à cette date',
-                total: '{total} souscriptions (Page {page} sur {totalPages})',
+                empty: 'Aucun abonnement trouvé.',
+                total: '{total} abonnements au total (Page {page} sur {totalPages})',
+                expires: 'Expire le',
                 free: 'Gratuit',
+                active: 'Actif',
             },
             status: {
                 active: 'Actif',
                 canceled: 'Annulé',
-                incomplete: 'Incomplet',
                 past_due: 'Impayé',
                 trialing: 'Essai',
+            },
+            filters: {
+                all: 'Tous',
+                active: 'Actif',
+                canceled: 'Annulé',
+                past_due: 'Impayé',
+            },
+            charts: {
+                subscriptions: 'Nouveaux Abonnements',
+                subscriptionsDesc: 'Souscriptions actives créées récemment',
+                revenue: 'Revenu Mensuel Cumulé',
+                average: 'Moyenne de {val} / jour',
+                total: 'Total 30j : ',
+            }
+        },
+        techwatches: {
+            title: 'Liste des TechWatches',
+            description: 'Gérez et consultez les détails des veilles des utilisateurs.',
+            table: {
+                project: 'Projet TechWatch',
+                owner: 'Propriétaire',
+                content: 'Contenu',
+                activity: 'Activité',
+                actions: 'Actions',
+                empty: 'Aucune TechWatch trouvée.',
+                created: 'Créé le',
+                updated: 'Maj',
+            },
+            filters: {
+                all: 'Toutes',
+                active: 'Actives',
+                empty: 'Vides',
+            },
+            charts: {
+                title: 'Activité des Veilles',
+                description: 'Nouvelles TechWatches créées sur les 30 derniers jours',
             }
         },
         topbar: {
@@ -207,6 +255,7 @@ export const translations = {
                 UNKNOWN: 'Erreur inconnue',
             },
         },
+        trialing: 'Essai',
     },
     en: {
         nav: {
@@ -313,11 +362,11 @@ export const translations = {
                 added: 'Date Added',
                 client: 'Client User',
                 watches: 'Active Watches',
-                storage: 'Storage Used',
+                storage: 'Used Storage',
                 joined: 'Joined',
-                emptyAdmin: 'No administrators found.',
-                emptyClient: 'No client users found on this page.',
-                total: '{total} total users (Page {page} of {totalPages})',
+                emptyAdmin: 'No administrator found.',
+                emptyClient: 'No client user found on this page.',
+                total: '{total} users total (Page {page} of {totalPages})',
             },
             role: {
                 SUPER_ADMIN: 'Super Admin',
@@ -328,26 +377,74 @@ export const translations = {
             actions: {
                 revoke: 'Revoke',
             },
+            filters: {
+                all: 'All',
+                free: 'Free',
+                pro: 'Pro',
+                premium: 'Premium',
+            },
+            charts: {
+                registrations: 'Member Growth',
+                registrationsDesc: 'Daily registrations over the last 30 days',
+                average: 'Average {val} / day',
+                total: 'Total 30d: ',
+            }
         },
         subscriptions: {
-            search: 'Search by email, name or plan...',
+            search: 'Search subscriptions...',
             table: {
                 subscriber: 'Subscriber',
                 plan: 'Plan',
                 price: 'Price',
                 status: 'Status',
                 renewal: 'Renewal',
-                empty: 'No subscriptions found on this page.',
-                expires: 'Expires on this date',
-                total: '{total} subscriptions (Page {page} of {totalPages})',
+                empty: 'No subscription found.',
+                total: '{total} users total (Page {page} of {totalPages})',
+                expires: 'Expires on',
                 free: 'Free',
+                active: 'Active',
             },
             status: {
                 active: 'Active',
                 canceled: 'Canceled',
-                incomplete: 'Incomplete',
                 past_due: 'Past Due',
-                trialing: 'Trialing',
+                trialing: 'Trial',
+            },
+            filters: {
+                all: 'All',
+                active: 'Active',
+                canceled: 'Canceled',
+                past_due: 'Past Due',
+            },
+            charts: {
+                subscriptions: 'New Subscriptions',
+                subscriptionsDesc: 'Recently created active subscriptions',
+                revenue: 'Cumulative Monthly Revenue',
+                average: 'Average {val} / day',
+                total: 'Total 30d: ',
+            }
+        },
+        techwatches: {
+            title: 'TechWatches List',
+            description: 'Manage and view user watch details.',
+            table: {
+                project: 'TechWatch Project',
+                owner: 'Owner',
+                content: 'Content',
+                activity: 'Activity',
+                actions: 'Actions',
+                empty: 'No TechWatch found.',
+                created: 'Created on',
+                updated: 'Updated',
+            },
+            filters: {
+                all: 'All',
+                active: 'Active',
+                empty: 'Empty',
+            },
+            charts: {
+                title: 'Watch Activity',
+                description: 'New TechWatches created over the last 30 days',
             }
         },
         topbar: {
@@ -408,6 +505,7 @@ export const translations = {
                 UNKNOWN: 'Unknown error',
             },
         },
+        trialing: 'Trial',
     },
 } as const
 

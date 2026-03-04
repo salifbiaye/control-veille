@@ -1,14 +1,15 @@
 import { getDashboardStats } from '@/features/dashboard/actions/dashboard.actions'
-import { BarChart3 } from 'lucide-react'
+import { getAnalyticsStats } from '@/features/analytics/actions/analytics.actions'
 import { PageHero } from '@/components/ui/PageHero'
 import { DashboardStats } from '@/features/dashboard/components/DashboardStats'
 import { RecentUsers } from '@/features/dashboard/components/RecentUsers'
 import { RecentTechWatches } from '@/features/dashboard/components/RecentTechWatches'
-import { SystemStatus } from '@/features/dashboard/components/SystemStatus'
+import { DashboardGrowthCharts } from '@/features/dashboard/components/DashboardGrowthCharts'
 import { QuickActions } from '@/features/dashboard/components/QuickActions'
 
 export default async function DashboardPage() {
   const stats = await getDashboardStats()
+  const analytics = await getAnalyticsStats()
 
   return (
     <div className="animate-slide-up-fade w-full">
@@ -33,9 +34,13 @@ export default async function DashboardPage() {
             <RecentTechWatches techWatches={stats.recentActivity.techWatches} />
           </div>
 
-          {/* Row 2: Status & Shortcuts */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8 animate-slide-up-fade" style={{ animationDelay: '500ms' }}>
-            <SystemStatus />
+          {/* Row 2: Growth Charts */}
+          <div className="animate-slide-up-fade" style={{ animationDelay: '500ms' }}>
+            <DashboardGrowthCharts usersGrowth={analytics.usersGrowth} revenueData={analytics.revenueData} />
+          </div>
+
+          {/* Row 3: Shortcuts */}
+          <div className="animate-slide-up-fade" style={{ animationDelay: '600ms' }}>
             <QuickActions />
           </div>
         </div>

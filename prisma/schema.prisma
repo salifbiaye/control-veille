@@ -7,37 +7,29 @@ datasource db {
   provider = "postgresql"
 }
 
-// ─────────────────────────────────────────────────────────────
-// ADMIN AUTH MODELS (tables: admin_users, admin_accounts, admin_sessions)
-// ─────────────────────────────────────────────────────────────
-
-
-
-// ─────────────────────────────────────────────────────────────
-// SHARED MODELS — app-client tables (same DB)
-// ─────────────────────────────────────────────────────────────
-
 model user {
-  id            String        @id
-  name          String        @default("")
-  email         String        @unique
-  emailVerified Boolean       @default(false)
-  image         String?
-  role          String        @default("USER")
-  permissions   String[]      @default([])
-  createdAt     DateTime
-  updatedAt     DateTime
-  companion     String?
-  storageUsed   Int           @default(0)
-  toursEnabled  Boolean       @default(true)
-  chatSessions  ChatSession[]
-  folders       Folder[]
-  resources     Resource[]
-  techWatches   TechWatch[]
-  accounts      account[]
-  sessions      session[]
-  snippets      Snippet[]
-  subscription  Subscription?
+  id                String        @id
+  name              String        @default("")
+  email             String        @unique
+  emailVerified     Boolean       @default(false)
+  image             String?
+  createdAt         DateTime
+  updatedAt         DateTime
+  companion         String?
+  storageUsed       Int           @default(0)
+  toursEnabled      Boolean       @default(true)
+  isPremiumLifetime Boolean       @default(false)
+  permissions       String[]      @default([])
+  role              String        @default("USER")
+  stripeCustomerId  String?       @unique
+  chatSessions      ChatSession[]
+  folders           Folder[]
+  resources         Resource[]
+  snippets          Snippet[]
+  subscription      Subscription?
+  techWatches       TechWatch[]
+  accounts          account[]
+  sessions          session[]
 }
 
 model session {
@@ -79,32 +71,37 @@ model verification {
 }
 
 model Plan {
-  id            String         @id @default(cuid())
-  name          String         @unique
-  slug          String         @unique
-  price         Int
-  interval      String         @default("month")
-  features      Json
-  isActive      Boolean        @default(true)
-  sortOrder     Int            @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  subscriptions Subscription[]
-  promotions    Promotion[]
+  id              String         @id @default(cuid())
+  name            String         @unique
+  slug            String         @unique
+  price           Int
+  interval        String         @default("month")
+  features        Json
+  isActive        Boolean        @default(true)
+  sortOrder       Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  stripePriceId   String?        @unique
+  stripeProductId String?
+  subscriptions   Subscription[]
+  promotions      Promotion[]
 
   @@map("plans")
 }
 
 model Subscription {
-  id               String    @id @default(cuid())
-  userId           String    @unique
-  planId           String
-  status           String    @default("active")
-  currentPeriodEnd DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  user             user      @relation(fields: [userId], references: [id])
-  plan             Plan      @relation(fields: [planId], references: [id])
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  planId               String
+  status               String    @default("active")
+  pricePaid            Int       @default(0)
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  cancelAtPeriodEnd    Boolean   @default(false)
+  stripeSubscriptionId String?   @unique
+  plan                 Plan      @relation(fields: [planId], references: [id])
+  user                 user      @relation(fields: [userId], references: [id])
 }
 
 model Promotion {
@@ -118,7 +115,7 @@ model Promotion {
   expiresAt     DateTime?
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
-  plan          Plan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
+  plan          Plan?     @relation(fields: [planId], references: [id])
 
   @@map("promotions")
 }
@@ -152,8 +149,8 @@ model TechWatch {
   resources       Resource[]
   roadmapEdges    RoadmapEdge[]
   roadmapNodes    RoadmapNode[]
-  tasks           Task[]
   snippets        Snippet[]
+  tasks           Task[]
   user            user            @relation(fields: [userId], references: [id], onDelete: Cascade)
   timelineEntries TimelineEntry[]
 
@@ -516,7 +513,7 @@ model Snippet {
   description      String?
   technology       String
   language         String    @default("plaintext")
-  code             String    @db.Text
+  code             String
   tags             String[]  @default([])
   isFavorite       Boolean   @default(false)
   isPrivate        Boolean   @default(true)
@@ -524,9 +521,8 @@ model Snippet {
   executionEnabled Boolean   @default(false)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
-
-  user      user      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  techWatch TechWatch @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+  techWatch        TechWatch @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+  user             user      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([technology])

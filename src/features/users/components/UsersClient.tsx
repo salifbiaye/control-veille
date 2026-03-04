@@ -9,14 +9,41 @@ import {
     updateAdminUserRole,
     revokeAdminUser,
     togglePremiumLifetime,
+    banUser,
+    unbanUser,
 } from '@/features/users/actions/users.actions'
-import type { AdminUser, ClientUser, PaginatedResult } from '@/features/users/actions/users.actions'
+import { refundSubscription } from '@/features/subscriptions/actions/subscriptions.actions'
+import type { AdminUser, ClientUser } from '@/features/users/actions/users.actions'
 import {
     ChevronLeft, ChevronRight, ShieldCheck, Users, Search,
-    UserX, Lock, Star, Crown, CalendarClock
+    UserX, Lock, Star, Crown, CalendarClock, Ban, Eye, ArrowUpDown, CheckCircle2
 } from 'lucide-react'
 import { useT } from '@/lib/i18n/locale-context'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
+import {
+    useReactTable,
+    getCoreRowModel,
+    getPaginationRowModel,
+    getSortedRowModel,
+    getFilteredRowModel,
+    flexRender,
+    type ColumnDef,
+    type SortingState,
+    type ColumnFiltersState,
+} from '@tanstack/react-table'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { MoreHorizontal } from 'lucide-react'
+import { UsersActivityChart } from './UsersActivityChart'
+import { getAnalyticsStats } from '@/features/analytics/actions/analytics.actions'
+import { useEffect } from 'react'
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -247,73 +274,439 @@ function AdminUsersTab({ initial }: { initial: AdminUser[] }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Client Users Tab
+// Client Users Tab (TanStack Table)
 // ─────────────────────────────────────────────────────────────
 
-function ClientUsersTab({ initial }: { initial: PaginatedResult<ClientUser> }) {
+function ClientUsersTab({ data }: { data: ClientUser[] }) {
     const t = useT()
-    const { data, meta } = initial
     const [users, setUsers] = useState(data)
-    const [searchTerm, setSearchTerm] = useState('')
+    const [globalFilter, setGlobalFilter] = useState('')
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+    const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }])
+    const [planFilter, setPlanFilter] = useState<'all' | 'free' | 'pro' | 'premium'>('all')
     const [pending, startTransition] = useTransition()
+    const [growthData, setGrowthData] = useState<any[]>([])
 
-    // Confirm modal for lifetime toggle
-    const [lifetimeModal, setLifetimeModal] = useState<{
+    // Fetch growth data for chart
+    useEffect(() => {
+        getAnalyticsStats().then(stats => {
+            setGrowthData(stats.usersGrowth || [])
+        })
+    }, [])
+
+    // Modals state
+    const [actionModal, setActionModal] = useState<{
         isOpen: boolean
+        type: 'lifetime' | 'ban' | 'unban'
         userId: string
-        value: boolean
-    }>({ isOpen: false, userId: '', value: false })
+        value?: boolean
+    }>({ isOpen: false, type: 'lifetime', userId: '' })
 
-    function requestLifetimeToggle(userId: string, value: boolean) {
-        setLifetimeModal({ isOpen: true, userId, value })
-    }
+    const [refundModal, setRefundModal] = useState<{ isOpen: boolean, subscriptionId: string | null }>({
+        isOpen: false,
+        subscriptionId: null
+    })
 
-    function confirmLifetimeToggle() {
-        const { userId, value } = lifetimeModal
-        setLifetimeModal(m => ({ ...m, isOpen: false }))
+    const [detailsModal, setDetailsModal] = useState<{ isOpen: boolean, user: ClientUser | null }>({
+        isOpen: false,
+        user: null
+    })
+
+    function confirmAction() {
+        const { type, userId, value } = actionModal
+        setActionModal(m => ({ ...m, isOpen: false }))
+
         startTransition(async () => {
-            const res = await togglePremiumLifetime(userId, value)
-            if (res.success) {
-                setUsers(prev => prev.map(u => u.id === userId ? { ...u, isPremiumLifetime: value } : u))
+            if (type === 'lifetime' && value !== undefined) {
+                const res = await togglePremiumLifetime(userId, value)
+                if (res.success) setUsers(prev => prev.map(u => u.id === userId ? { ...u, isPremiumLifetime: value } : u))
+            } else if (type === 'unban') {
+                const res = await unbanUser(userId)
+                if (res.success) setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: 'USER' } : u))
+            } else if (type === 'ban') {
+                const res = await banUser(userId)
+                if (res.success) {
+                    setUsers(prev => prev.map(u =>
+                        u.id === userId ? { ...u, role: 'BANNED', subscriptionStatus: 'canceled' } : u
+                    ))
+                    if (detailsModal.user?.id === userId) {
+                        setDetailsModal(prev => ({
+                            ...prev,
+                            user: prev.user ? { ...prev.user, role: 'BANNED', subscriptionStatus: 'canceled' } : null
+                        }))
+                    }
+                }
             }
         })
     }
 
+    function confirmRefund() {
+        if (!refundModal.subscriptionId) return
+        const subId = refundModal.subscriptionId
+        setRefundModal({ isOpen: false, subscriptionId: null })
+
+        startTransition(async () => {
+            const res = await refundSubscription(subId)
+            if (res.success) {
+                setUsers(prev => prev.map(u =>
+                    u.subscriptionId === subId
+                        ? { ...u, subscriptionStatus: 'refunded', planName: 'Free' }
+                        : u
+                ))
+
+                if (detailsModal.user?.subscriptionId === subId) {
+                    setDetailsModal(prev => ({
+                        ...prev,
+                        user: prev.user ? { ...prev.user, subscriptionStatus: 'refunded', planName: 'Free' } : null
+                    }))
+                }
+            }
+        })
+    }
+
+    const columns = useMemo<ColumnDef<ClientUser>[]>(() => [
+        {
+            accessorFn: row => `${row.name} ${row.email}`,
+            id: 'client',
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                        className="px-0 font-medium hover:bg-transparent -ml-2 h-auto text-[var(--page-fg)]"
+                    >
+                        {t.users.table.client}
+                        <ArrowUpDown className="ml-2 h-3 w-3" />
+                    </Button>
+                )
+            },
+            cell: ({ row }) => {
+                const user = row.original
+                const initialStr = (user.name || user.email).charAt(0).toUpperCase()
+                const hasActiveSub = user.subscriptionStatus === 'active'
+                const planName = user.planName || t.subscriptions?.table?.free || 'Free'
+
+                const isLifetime = user.isPremiumLifetime
+                const isBanned = (user as any).role === 'BANNED'
+
+                // Logic fix for plan detection
+                const lowerPlan = planName.toLowerCase()
+                const isPro = lowerPlan.includes('pro')
+                const isTeam = lowerPlan.includes('team')
+                const isPremium = isLifetime || (hasActiveSub && (isPro || isTeam))
+
+                return (
+                    <div className={`flex items-center gap-3 ${isBanned ? 'opacity-50 grayscale-[0.5]' : ''}`}>
+                        <Avatar className={`h-9 w-9 border rounded-full shadow-sm ${isPremium ? 'border-primary/50' : 'border-[var(--glass-border)]'}`}>
+                            <AvatarFallback className="text-sm font-bold text-white" style={{ backgroundColor: getColorForInitial(initialStr) }}>
+                                {initialStr}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <div className="font-medium text-[var(--page-fg)] flex items-center gap-2">
+                                {user.name || '—'}
+                                {isBanned ? (
+                                    <Badge variant="outline" className="h-5 px-1.5 text-[10px] bg-red-500/10 text-red-500 border-red-500/20 gap-1">
+                                        <Ban className="w-2.5 h-2.5" />
+                                        BANNI
+                                    </Badge>
+                                ) : isLifetime ? (
+                                    <Badge variant="outline" className="h-5 px-1.5 text-[10px] bg-violet-600/10 text-violet-400 border-violet-600/20 gap-1">
+                                        <Star className="w-2.5 h-2.5" />
+                                        LIFETIME PRO
+                                    </Badge>
+                                ) : hasActiveSub ? (
+                                    <Badge variant="outline" className={`h-5 px-1.5 text-[10px] border-primary/20 bg-primary/10 text-primary`}>
+                                        {planName}
+                                        {user.cancelAtPeriodEnd && ' · fin'}
+                                    </Badge>
+                                ) : (
+                                    <Badge variant="outline" className="h-5 px-1.5 text-[10px] bg-slate-500/10 text-slate-400 border-slate-500/20">
+                                        Free
+                                    </Badge>
+                                )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">{user.email}</div>
+                        </div>
+                    </div>
+                )
+            }
+        },
+        {
+            accessorKey: 'techWatchCount',
+            header: () => <div className="text-center">{t.users.table.watches}</div>,
+            cell: ({ row }) => {
+                const count = row.original.techWatchCount
+                return (
+                    <div className="text-center">
+                        <span className={`inline-flex items-center justify-center min-w-[24px] px-1.5 h-6 rounded-md text-xs font-mono font-semibold ${count > 0 ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'}`}>
+                            {count}
+                        </span>
+                    </div>
+                )
+            }
+        },
+        {
+            accessorKey: 'createdAt',
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                        className="px-0 font-medium hover:bg-transparent h-auto text-[var(--page-fg)]"
+                    >
+                        Date d'inscription
+                        <ArrowUpDown className="ml-2 h-3 w-3" />
+                    </Button>
+                )
+            },
+            cell: ({ row }) => (
+                <span className="text-xs text-muted-foreground">
+                    {new Date(row.original.createdAt).toLocaleDateString('fr-FR')}
+                </span>
+            )
+        },
+        {
+            id: 'actions',
+            header: () => <div className="text-right">Actions</div>,
+            cell: ({ row }) => {
+                const user = row.original
+                const hasActiveSub = user.subscriptionStatus === 'active'
+                const isLifetime = user.isPremiumLifetime
+                const isBanned = (user as any).role === 'BANNED'
+
+                return (
+                    <div className="flex justify-end items-center">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0"
+                                    disabled={pending}
+                                >
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => setDetailsModal({ isOpen: true, user })}>
+                                    <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
+                                    Voir détails
+                                </DropdownMenuItem>
+
+                                <DropdownMenuSeparator />
+
+                                {!hasActiveSub && (
+                                    <DropdownMenuItem onClick={() => setActionModal({ isOpen: true, type: 'lifetime', userId: user.id, value: !isLifetime })}>
+                                        <Star className={`mr-2 h-4 w-4 ${isLifetime ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
+                                        {isLifetime ? 'Désactiver Lifetime' : '⭐ Activer Lifetime Pro'}
+                                    </DropdownMenuItem>
+                                )}
+
+                                {isBanned ? (
+                                    <DropdownMenuItem onClick={() => setActionModal({ isOpen: true, type: 'unban', userId: user.id })} className="text-green-600 focus:text-green-600 focus:bg-green-500/10">
+                                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                                        Débannir
+                                    </DropdownMenuItem>
+                                ) : (
+                                    <DropdownMenuItem onClick={() => setActionModal({ isOpen: true, type: 'ban', userId: user.id })} className="text-red-600 focus:text-red-600 focus:bg-red-500/10">
+                                        <Ban className="mr-2 h-4 w-4" />
+                                        Bannir le client
+                                    </DropdownMenuItem>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                )
+            }
+        }
+    ], [t, pending])
+
+    // Memoize filtered data for Plan status
     const filteredUsers = useMemo(() => {
-        if (!searchTerm) return users
-        return users.filter(u =>
-            (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (u.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-        )
-    }, [users, searchTerm])
+        if (planFilter === 'all') return users
+        return users.filter(user => {
+            const plan = (user.planName || '').toLowerCase()
+            const isLifetime = user.isPremiumLifetime
+            const hasActiveSub = user.subscriptionStatus === 'active'
+
+            if (planFilter === 'free') return !isLifetime && !hasActiveSub
+            if (planFilter === 'pro') return isLifetime || (hasActiveSub && plan.includes('pro'))
+            if (planFilter === 'premium') return hasActiveSub && (plan.includes('team') || plan.includes('premium'))
+            return true
+        })
+    }, [users, planFilter])
+
+    const table = useReactTable({
+        data: filteredUsers,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        state: { globalFilter, sorting, columnFilters },
+        onGlobalFilterChange: setGlobalFilter,
+        onColumnFiltersChange: setColumnFilters,
+        onSortingChange: setSorting,
+        initialState: { pagination: { pageSize: 10 } }
+    })
 
     return (
-        <div className="space-y-4 animate-slide-up-fade">
+        <div className="space-y-6 animate-slide-up-fade">
+            {/* 1. Activity Chart */}
+            {growthData.length > 0 && (
+                <div className="mb-2">
+                    <UsersActivityChart data={growthData} />
+                </div>
+            )}
+
             <ConfirmModal
-                isOpen={lifetimeModal.isOpen}
-                variant={lifetimeModal.value ? 'warning' : 'danger'}
-                title={lifetimeModal.value ? 'Activer le Premium Lifetime' : 'Désactiver le Premium Lifetime'}
-                description={
-                    lifetimeModal.value
-                        ? 'Cet utilisateur aura accès à toutes les fonctionnalités Pro gratuitement, sans abonnement Stripe.'
-                        : 'Cet utilisateur retournera à son plan normal (Free ou abonnement Stripe actif).'
+                isOpen={actionModal.isOpen}
+                variant={actionModal.type === 'unban' ? 'warning' : 'danger'}
+                title={
+                    actionModal.type === 'unban' ? 'Débannir l\'utilisateur' :
+                        actionModal.type === 'ban' ? 'Bannir l\'utilisateur' :
+                            actionModal.value ? 'Activer le Premium Lifetime' : 'Désactiver le Premium Lifetime'
                 }
-                confirmLabel={lifetimeModal.value ? '⭐ Activer' : 'Désactiver'}
-                onConfirm={confirmLifetimeToggle}
-                onCancel={() => setLifetimeModal(m => ({ ...m, isOpen: false }))}
+                description={
+                    actionModal.type === 'unban' ? 'L\'utilisateur retrouvera ses accès normaux à la plateforme.' :
+                        actionModal.type === 'ban' ? 'Cet utilisateur perdra instantanément l\'accès à la plateforme. Vous pourrez le débannir plus tard.' :
+                            actionModal.value
+                                ? 'Cet utilisateur aura accès à toutes les fonctionnalités Pro gratuitement, sans abonnement Stripe.'
+                                : 'Cet utilisateur retournera à son plan normal (Free ou abonnement Stripe actif).'
+                }
+                confirmLabel={
+                    actionModal.type === 'unban' ? 'Débannir' :
+                        actionModal.type === 'ban' ? 'Bannir' :
+                            actionModal.value ? '⭐ Activer' : 'Désactiver'
+                }
+                onConfirm={confirmAction}
+                onCancel={() => setActionModal(m => ({ ...m, isOpen: false }))}
                 isPending={pending}
             />
 
-            <div className="flex items-center gap-4 border-b border-[var(--glass-border)] pb-4">
-                <div className="relative w-full group">
+            <ConfirmModal
+                isOpen={refundModal.isOpen}
+                variant="danger"
+                title="Confirmer le remboursement"
+                description="Êtes-vous sûr de vouloir rembourser le dernier paiement de cet utilisateur ? L'abonnement sera également annulé dans Stripe."
+                confirmLabel="Confirmer le remboursement"
+                onConfirm={confirmRefund}
+                onCancel={() => setRefundModal({ isOpen: false, subscriptionId: null })}
+                isPending={pending}
+            />
+
+            {/* Render Details Sheet */}
+            <Sheet open={detailsModal.isOpen} onOpenChange={(open) => !open && setDetailsModal({ isOpen: false, user: null })}>
+                <SheetContent className="bg-[var(--background)] border-l border-[var(--glass-border)] sm:max-w-md">
+                    <SheetHeader className="mb-6">
+                        <SheetTitle className="text-xl">Détails de l'utilisateur</SheetTitle>
+                        <SheetDescription>
+                            Aperçu complet du compte et de l'usage.
+                        </SheetDescription>
+                    </SheetHeader>
+                    {detailsModal.user && (
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-4 p-4 rounded-xl border border-[var(--glass-border)] bg-[rgba(255,255,255,0.02)]">
+                                <Avatar className="h-12 w-12 border border-[var(--glass-border)]">
+                                    <AvatarFallback className="text-lg font-bold text-white" style={{ backgroundColor: getColorForInitial(detailsModal.user.name || detailsModal.user.email) }}>
+                                        {(detailsModal.user.name || detailsModal.user.email).charAt(0).toUpperCase()}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="font-semibold text-[var(--page-fg)]">{detailsModal.user.name || 'Sans Nom'}</p>
+                                    <p className="text-sm text-muted-foreground">{detailsModal.user.email}</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--card-bg)]">
+                                    <p className="text-xs text-muted-foreground mb-1">ID Utilisateur</p>
+                                    <p className="text-xs font-mono font-medium truncate" title={detailsModal.user.id}>{detailsModal.user.id.substring(0, 16)}...</p>
+                                </div>
+                                <div className="p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--card-bg)]">
+                                    <p className="text-xs text-muted-foreground mb-1">Date d'inscription</p>
+                                    <p className="text-sm font-medium">{new Date(detailsModal.user.createdAt).toLocaleDateString('fr-FR')}</p>
+                                </div>
+                                <div className="p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--card-bg)]">
+                                    <p className="text-xs text-muted-foreground mb-1">Status Abonnement</p>
+                                    <div className="mt-1">
+                                        {detailsModal.user.isPremiumLifetime ? (
+                                            <Badge variant="outline" className="bg-violet-500/10 text-violet-400 border-violet-500/20">Lifetime Pro</Badge>
+                                        ) : detailsModal.user.subscriptionStatus === 'active' ? (
+                                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">{detailsModal.user.planName || 'Pro'}</Badge>
+                                        ) : (
+                                            <Badge variant="outline" className="bg-slate-500/10 text-slate-400 border-slate-500/20">Free</Badge>
+                                        )}
+                                        {detailsModal.user.subscriptionId && detailsModal.user.subscriptionStatus === 'active' && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setRefundModal({ isOpen: true, subscriptionId: detailsModal.user!.subscriptionId })}
+                                                className="mt-2 w-full text-xs border-red-500/30 hover:bg-red-500/10 hover:text-red-400 gap-2"
+                                            >
+                                                <MoreHorizontal className="w-3 h-3" />
+                                                Rembourser le paiement
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--card-bg)]">
+                                    <p className="text-xs text-muted-foreground mb-1">Veilles créées</p>
+                                    <p className="text-xl font-bold text-[var(--page-fg)]">{detailsModal.user.techWatchCount}</p>
+                                </div>
+                            </div>
+
+                            <div className="p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--card-bg)]">
+                                <div className="flex justify-between items-center mb-2">
+                                    <p className="text-sm font-medium text-[var(--page-fg)]">Stockage Cloud</p>
+                                    <p className="text-xs text-muted-foreground">{formatBytes(detailsModal.user.storageUsed)} / {formatBytes(detailsModal.user.storageLimit)}</p>
+                                </div>
+                                <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-primary rounded-full transition-all"
+                                        style={{ width: `${Math.min(100, (Number(detailsModal.user.storageUsed) / Math.max(1, Number(detailsModal.user.storageLimit))) * 100)}%` }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </SheetContent>
+            </Sheet>
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                {/* 1. Global Search */}
+                <div className="relative flex-1 group max-w-md">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary pointer-events-none" />
                     <input
                         type="text"
                         placeholder={t.users.search.clients}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full h-11 rounded-xl bg-background/60 backdrop-blur-md border border-[var(--glass-border)] px-4 pl-12 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                        value={globalFilter}
+                        onChange={(e) => setGlobalFilter(e.target.value)}
+                        className="w-full h-11 rounded-xl bg-[rgba(255,255,255,0.01)] border border-[var(--glass-border)] px-4 pl-12 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all font-medium"
                     />
+                </div>
+
+                {/* 2. Plan Filters */}
+                <div className="flex items-center gap-1 p-1 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[var(--glass-border)] overflow-x-auto no-scrollbar">
+                    {[
+                        { id: 'all', label: t.users.filters.all },
+                        { id: 'free', label: t.users.filters.free },
+                        { id: 'pro', label: t.users.filters.pro },
+                        { id: 'premium', label: t.users.filters.premium }
+                    ].map((f) => (
+                        <button
+                            key={f.id}
+                            onClick={() => setPlanFilter(f.id as any)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${planFilter === f.id
+                                ? 'bg-primary text-white shadow-lg'
+                                : 'text-muted-foreground hover:text-[var(--page-fg)] hover:bg-white/5'
+                                }`}
+                        >
+                            {f.label}
+                        </button>
+                    ))}
                 </div>
             </div>
 
@@ -321,139 +714,76 @@ function ClientUsersTab({ initial }: { initial: PaginatedResult<ClientUser> }) {
                 <div className="overflow-x-auto">
                     <table className="premium-table">
                         <thead>
-                            <tr>
-                                <th className="w-[35%]">{t.users.table.client}</th>
-                                <th className="text-center">{t.users.table.watches}</th>
-                                <th>{t.users.table.storage}</th>
-                                <th>Abonnement</th>
-                                <th className="text-right">Actions</th>
-                            </tr>
+                            {table.getHeaderGroups().map(headerGroup => (
+                                <tr key={headerGroup.id}>
+                                    {headerGroup.headers.map(header => (
+                                        <th key={header.id} className={header.column.id === 'actions' ? 'text-right' : ''}>
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(header.column.columnDef.header, header.getContext())}
+                                        </th>
+                                    ))}
+                                </tr>
+                            ))}
                         </thead>
                         <tbody>
-                            {filteredUsers.length === 0 ? (
+                            {table.getRowModel().rows?.length ? (
+                                table.getRowModel().rows.map(row => (
+                                    <tr key={row.id} className="group hover:bg-[rgba(255,255,255,0.01)] transition-colors">
+                                        {row.getVisibleCells().map(cell => (
+                                            <td key={cell.id}>
+                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))
+                            ) : (
                                 <tr>
-                                    <td colSpan={5} className="text-center py-12 text-muted-foreground italic">
+                                    <td colSpan={columns.length} className="text-center py-12 text-muted-foreground italic">
                                         {t.users.table.emptyClient}
                                     </td>
                                 </tr>
-                            ) : filteredUsers.map((row) => {
-                                const initialStr = (row.name || row.email).charAt(0).toUpperCase()
-                                const hasActiveSub = row.subscriptionStatus === 'active'
-                                const planName = row.planName || t.subscriptions?.table?.free || 'Free'
-                                const isLifetime = row.isPremiumLifetime
-                                const isPremium = isLifetime || (hasActiveSub && (planName.toLowerCase().includes('pro') || planName.toLowerCase().includes('team')))
-
-                                return (
-                                    <tr key={row.id} className="group">
-                                        <td>
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className={`h-9 w-9 border rounded-full shadow-sm ${isPremium ? 'border-primary/50' : 'border-[var(--glass-border)]'}`}>
-                                                    <AvatarFallback className="text-sm font-bold text-white" style={{ backgroundColor: getColorForInitial(initialStr) }}>
-                                                        {initialStr}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <div>
-                                                    <div className="font-medium text-[var(--page-fg)] flex items-center gap-2">
-                                                        {row.name || '—'}
-                                                        {isLifetime ? (
-                                                            <Badge variant="outline" className="h-5 px-1.5 text-[10px] bg-violet-500/10 text-violet-400 border-violet-500/20 gap-1">
-                                                                <Star className="w-2.5 h-2.5" />
-                                                                LIFETIME
-                                                            </Badge>
-                                                        ) : hasActiveSub ? (
-                                                            <Badge variant="outline" className="h-5 px-1.5 text-[10px] bg-primary/10 text-primary border-primary/20">
-                                                                {planName}
-                                                                {row.cancelAtPeriodEnd && ' ·  se termine'}
-                                                            </Badge>
-                                                        ) : (
-                                                            <Badge variant="outline" className="h-5 px-1.5 text-[10px] bg-slate-500/10 text-slate-400 border-slate-500/20">
-                                                                Free
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">{row.email}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="text-center">
-                                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-xs font-mono font-semibold ${row.techWatchCount > 0 ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'}`}>
-                                                {row.techWatchCount}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center justify-between text-xs max-w-[120px]">
-                                                    <span className="font-medium text-[var(--page-fg)]">{formatBytes(row.storageUsed)}</span>
-                                                    <span className="text-muted-foreground">{formatBytes(row.storageLimit)}</span>
-                                                </div>
-                                                <div className="h-1.5 w-full max-w-[120px] bg-slate-800 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-primary rounded-full"
-                                                        style={{ width: `${Math.min(100, (Number(row.storageUsed) / Math.max(1, Number(row.storageLimit))) * 100)}%` }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            {isLifetime ? (
-                                                <span className="text-xs text-violet-400 font-semibold">∞ Pro Lifetime</span>
-                                            ) : hasActiveSub && row.currentPeriodEnd ? (
-                                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                                    <CalendarClock className="w-3.5 h-3.5 flex-shrink-0" />
-                                                    <span>
-                                                        {row.cancelAtPeriodEnd ? 'Se termine le' : 'Renouvellement'}
-                                                        {' '}{new Date(row.currentPeriodEnd).toLocaleDateString('fr-FR')}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-xs text-muted-foreground">—</span>
-                                            )}
-                                        </td>
-                                        <td className="text-right">
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                disabled={pending}
-                                                onClick={() => requestLifetimeToggle(row.id, !row.isPremiumLifetime)}
-                                                className={`h-8 text-xs transition-all shadow-none ${isLifetime
-                                                    ? 'bg-violet-500/5 border-violet-500/20 text-violet-400 hover:bg-violet-500/15'
-                                                    : 'bg-[rgba(124,58,237,0.05)] border-primary/20 text-primary hover:bg-primary/10'
-                                                    }`}
-                                                title={isLifetime ? 'Désactiver Premium Lifetime' : 'Activer Premium Lifetime'}
-                                            >
-                                                <Star className={`w-3.5 h-3.5 ${isLifetime ? 'fill-current' : ''} ${!isLifetime && 'mr-1.5'}`} />
-                                                {isLifetime ? '' : 'Lifetime'}
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                )
-                            })}
+                            )}
                         </tbody>
                     </table>
                 </div>
 
-                {meta.totalPages > 1 && (
-                    <div className="flex items-center justify-between px-5 py-4 border-t border-[var(--glass-border)] bg-[rgba(255,255,255,0.01)]">
-                        <span className="text-sm text-muted-foreground font-medium">
-                            {t.users.table.total
-                                .replace('{total}', meta.total.toString())
-                                .replace('{page}', meta.page.toString())
-                                .replace('{totalPages}', meta.totalPages.toString())}
+                <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-4 border-t border-[var(--glass-border)] bg-[rgba(255,255,255,0.01)] gap-4">
+                    <div className="text-sm text-muted-foreground font-medium flex items-center gap-4">
+                        <span className="flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5" />
+                            {table.getFilteredRowModel().rows.length} <span className="hidden sm:inline">utilisateurs trouvés</span>
                         </span>
-                        <div className="flex gap-2">
-                            <Link href={meta.page <= 1 ? '#' : `/dashboard/users?page=${meta.page - 1}`} passHref>
-                                <Button variant="outline" size="icon" disabled={meta.page <= 1} className="h-8 w-8 bg-[var(--card-bg)] border-[var(--chrome-border)] hover:bg-[var(--glass-elev)] text-[var(--page-fg)]">
-                                    <ChevronLeft className="w-4 h-4" />
-                                </Button>
-                            </Link>
-                            <Link href={meta.page >= meta.totalPages ? '#' : `/dashboard/users?page=${meta.page + 1}`} passHref>
-                                <Button variant="outline" size="icon" disabled={meta.page >= meta.totalPages} className="h-8 w-8 bg-[var(--card-bg)] border-[var(--chrome-border)] hover:bg-[var(--glass-elev)] text-[var(--page-fg)]">
-                                    <ChevronRight className="w-4 h-4" />
-                                </Button>
-                            </Link>
-                        </div>
+                        {table.getPageCount() > 0 && (
+                            <span className="text-xs px-2 py-0.5 rounded-md bg-white/5 border border-white/5">
+                                Page {table.getState().pagination.pageIndex + 1} / {table.getPageCount() || 1}
+                            </span>
+                        )}
                     </div>
-                )}
+
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => table.previousPage()}
+                            disabled={!table.getCanPreviousPage()}
+                            className="h-8 px-3 gap-1.5 bg-[var(--card-bg)] border-[var(--chrome-border)] hover:bg-[var(--glass-elev)] text-[var(--page-fg)] disabled:opacity-20 text-xs transition-all"
+                        >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                            Précédent
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => table.nextPage()}
+                            disabled={!table.getCanNextPage()}
+                            className="h-8 px-3 gap-1.5 bg-[var(--card-bg)] border-[var(--chrome-border)] hover:bg-[var(--glass-elev)] text-[var(--page-fg)] disabled:opacity-20 text-xs transition-all"
+                        >
+                            Suivant
+                            <ChevronRight className="w-3.5 h-3.5" />
+                        </Button>
+                    </div>
+                </div>
             </div>
         </div>
     )
@@ -467,7 +797,7 @@ type Tab = 'clients' | 'admin'
 
 interface UsersClientProps {
     adminUsers: AdminUser[]
-    clientUsers: PaginatedResult<ClientUser>
+    clientUsers: ClientUser[]
 }
 
 export function UsersClient({ adminUsers, clientUsers }: UsersClientProps) {
@@ -475,7 +805,7 @@ export function UsersClient({ adminUsers, clientUsers }: UsersClientProps) {
     const t = useT()
 
     const tabs: { id: Tab; label: string; count: number; icon: React.ElementType }[] = [
-        { id: 'clients', label: t.users.tabs.clients, count: clientUsers.meta.total, icon: Users },
+        { id: 'clients', label: t.users.tabs.clients, count: clientUsers.length, icon: Users },
         { id: 'admin', label: t.users.tabs.admin, count: adminUsers.length, icon: ShieldCheck },
     ]
 
@@ -504,7 +834,7 @@ export function UsersClient({ adminUsers, clientUsers }: UsersClientProps) {
             </div>
 
             <div>
-                {tab === 'clients' && <ClientUsersTab initial={clientUsers} />}
+                {tab === 'clients' && <ClientUsersTab data={clientUsers} />}
                 {tab === 'admin' && <AdminUsersTab initial={adminUsers} />}
             </div>
         </div>

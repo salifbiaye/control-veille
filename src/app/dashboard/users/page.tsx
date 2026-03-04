@@ -21,7 +21,7 @@ export default async function UsersPage({
 
   const [adminUsers, clientUsers] = await Promise.all([
     getAdminUsers(),
-    getClientUsers(page, 20),
+    getClientUsers(),
   ])
 
   return (

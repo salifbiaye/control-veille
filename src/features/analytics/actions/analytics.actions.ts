@@ -11,6 +11,8 @@ export interface AnalyticsStats {
     recentSubscribers: any[]
     revenueData: any[]
     usersGrowth: any[]
+    subscriptionsGrowth: any[]
+    techWatchesGrowth: any[]
     subscriptionsDistribution: any[]
 }
 
@@ -24,6 +26,8 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
         totalAdminUsers,
         subscriptions,
         newUsersCount,
+        techWatchesLast30,
+        activeSubsLast30,
     ] = await Promise.all([
         // App-client users (role == USER)
         prisma.user.count({ where: { role: 'USER' } }),
@@ -40,6 +44,20 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
         // New client users last 30 days
         prisma.user.count({
             where: { createdAt: { gte: thirtyDaysAgo } }
+        }),
+
+        // New TechWatches last 30 days
+        prisma.techWatch.findMany({
+            where: { createdAt: { gte: thirtyDaysAgo } },
+            select: { createdAt: true },
+            orderBy: { createdAt: 'asc' }
+        }),
+
+        // New Subscriptions last 30 days
+        prisma.subscription.findMany({
+            where: { createdAt: { gte: thirtyDaysAgo }, status: 'active' },
+            select: { createdAt: true },
+            orderBy: { createdAt: 'asc' }
         }),
     ])
 
@@ -63,7 +81,10 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
     }))
 
     const activeSubscriptions = subscriptions.length
-    const totalRevenue = subscriptions.reduce((acc: number, sub: any) => acc + (sub.plan?.price || 0), 0)
+    const totalRevenue = subscriptions.reduce((acc: number, sub: any) => {
+        const price = sub.pricePaid || sub.plan?.price || 0
+        return acc + price
+    }, 0)
 
     // Aggrégation: Distribution des abonnements par plan (Donut Chart)
     const distributionMap = new Map<string, number>()
@@ -85,6 +106,17 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
         value
     }))
 
+    // Helper to initialize 30 days growth map
+    const init30DaysMap = () => {
+        const m = new Map<string, number>()
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
+            const dStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`
+            m.set(dStr, 0)
+        }
+        return m
+    }
+
     // Aggrégation: Croissance utilisateurs 30 derniers jours (Area Chart)
     const usersLast30Docs = await prisma.user.findMany({
         where: { createdAt: { gte: thirtyDaysAgo } },
@@ -92,26 +124,38 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
         orderBy: { createdAt: 'asc' }
     })
 
-    const growthMap = new Map<string, number>()
-    // Initialize last 30 days with 0
-    for (let i = 29; i >= 0; i--) {
-        const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
-        const dStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`
-        growthMap.set(dStr, 0)
-    }
-
+    const usersGrowthMap = init30DaysMap()
     usersLast30Docs.forEach((u: any) => {
         const d = u.createdAt
         const dStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`
-        if (growthMap.has(dStr)) {
-            growthMap.set(dStr, growthMap.get(dStr)! + 1)
+        if (usersGrowthMap.has(dStr)) {
+            usersGrowthMap.set(dStr, usersGrowthMap.get(dStr)! + 1)
         }
     })
 
-    const usersGrowth = Array.from(growthMap.entries()).map(([date, users]) => ({
-        date,
-        users
-    }))
+    const usersGrowth = Array.from(usersGrowthMap.entries()).map(([date, users]) => ({ date, users }))
+
+    // Aggrégation: Croissance TechWatches
+    const twGrowthMap = init30DaysMap()
+    techWatchesLast30.forEach((tw: any) => {
+        const d = tw.createdAt
+        const dStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`
+        if (twGrowthMap.has(dStr)) {
+            twGrowthMap.set(dStr, twGrowthMap.get(dStr)! + 1)
+        }
+    })
+    const techWatchesGrowth = Array.from(twGrowthMap.entries()).map(([date, count]) => ({ date, count }))
+
+    // Aggrégation: Croissance Subscriptions
+    const subGrowthMap = init30DaysMap()
+    activeSubsLast30.forEach((sub: any) => {
+        const d = sub.createdAt
+        const dStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`
+        if (subGrowthMap.has(dStr)) {
+            subGrowthMap.set(dStr, subGrowthMap.get(dStr)! + 1)
+        }
+    })
+    const subscriptionsGrowth = Array.from(subGrowthMap.entries()).map(([date, count]) => ({ date, count }))
 
     // Aggrégation: MRR historique simulé basé sur création d'abo (Bar Chart)
     const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc']
@@ -136,7 +180,7 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
 
     subscriptions.forEach((sub: any) => {
         const d = sub.createdAt as Date
-        const price = (sub.plan?.price || 0) / 100
+        const price = (sub.pricePaid || sub.plan?.price || 0) / 100
 
         if (d < sixMonthsAgo) {
             cumulativeRevenue += price
@@ -164,6 +208,8 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
         recentSubscribers,
         revenueData,
         usersGrowth,
+        subscriptionsGrowth,
+        techWatchesGrowth,
         subscriptionsDistribution
     }
 }

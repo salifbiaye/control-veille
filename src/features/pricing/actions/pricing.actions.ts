@@ -9,21 +9,9 @@ import { requirePermission } from '@/lib/session'
 // ─────────────────────────────────────────────────────────────
 
 export interface PlanFeatures {
-    techWatches: number
-    notes: number
-    storage: number // bytes
-    companion: boolean
-    courses: number
-    interviews: boolean
-    aiTools: boolean
-    mindmaps: boolean
-    roadmap: boolean
-    comparisons: boolean
-    chatHistory: boolean
-    articles: number
-    tasks: number
     resources: number
-    [key: string]: number | boolean
+    isPopular?: boolean
+    [key: string]: number | boolean | undefined
 }
 
 export type PlanData = {
@@ -55,13 +43,25 @@ export async function getPlans() {
         await requirePermission('VIEW_PLANS')
         const plans = await prisma.plan.findMany({
             orderBy: { sortOrder: 'asc' },
-            include: {
+        })
+
+        // Manual count for active subscriptions to ensure precision
+        const plansWithCounts = await Promise.all(plans.map(async (plan) => {
+            const activeCount = await prisma.subscription.count({
+                where: {
+                    planId: plan.id,
+                    status: 'active'
+                }
+            })
+            return {
+                ...plan,
                 _count: {
-                    select: { subscriptions: true }
+                    subscriptions: activeCount
                 }
             }
-        })
-        return { success: true, plans }
+        }))
+
+        return { success: true, plans: plansWithCounts }
     } catch (error) {
         console.error('[PRICING] getPlans error:', error)
         return { success: false, plans: [], error: 'Erreur lors de la récupération des plans' }

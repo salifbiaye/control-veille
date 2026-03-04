@@ -5,9 +5,22 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { ChevronLeft, ChevronRight, Receipt, Search, CreditCard } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Receipt, Search, CreditCard, MoreHorizontal, Eye, User, Banknote } from 'lucide-react'
 import type { SubscriptionDetails, PaginatedResult } from '@/features/subscriptions/actions/subscriptions.actions'
-import { useT } from '@/lib/i18n/locale-context'
+import { refundSubscription } from '@/features/subscriptions/actions/subscriptions.actions'
+import { useT, useLocale } from '@/lib/i18n/locale-context'
+import { SubscriptionsActivityChart } from './SubscriptionsActivityChart'
+import { getAnalyticsStats } from '@/features/analytics/actions/analytics.actions'
+import { useEffect, useTransition } from 'react'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
 
 function getColorForInitial(initial: string) {
     const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4']
@@ -22,8 +35,42 @@ function formatPrice(price: number, t: any) {
 
 export function SubscriptionsClient({ initial }: { initial: PaginatedResult<SubscriptionDetails> }) {
     const t = useT()
-    const { data: subscriptions, meta } = initial
+    const { locale } = useLocale()
+    const [subscriptions, setSubscriptions] = useState(initial.data)
+    const { meta } = initial
     const [searchTerm, setSearchTerm] = useState('')
+    const [growthData, setGrowthData] = useState<any[]>([])
+    const [isPending, startTransition] = useTransition()
+    const [refundModal, setRefundModal] = useState<{ isOpen: boolean, subId: string | null }>({
+        isOpen: false,
+        subId: null
+    })
+
+    // Sync state if props change (e.g. following revalidatePath)
+    useEffect(() => {
+        setSubscriptions(initial.data)
+    }, [initial.data])
+
+    useEffect(() => {
+        getAnalyticsStats().then((stats: any) => {
+            setGrowthData(stats.subscriptionsGrowth || [])
+        })
+    }, [])
+
+    function confirmRefund() {
+        if (!refundModal.subId) return
+        const subId = refundModal.subId
+        setRefundModal({ isOpen: false, subId: null })
+
+        startTransition(async () => {
+            const res = await refundSubscription(subId)
+            if (res.success) {
+                setSubscriptions(prev => prev.map(s =>
+                    s.id === subId ? { ...s, status: 'refunded' } : s
+                ))
+            }
+        })
+    }
 
     const filtered = subscriptions.filter(sub => {
         if (!searchTerm) return true
@@ -36,7 +83,14 @@ export function SubscriptionsClient({ initial }: { initial: PaginatedResult<Subs
     })
 
     return (
-        <div className="space-y-4 animate-slide-up-fade">
+        <div className="space-y-6 animate-slide-up-fade">
+            {/* 1. Activity Chart */}
+            {growthData.length > 0 && (
+                <div className="mb-2">
+                    <SubscriptionsActivityChart data={growthData} />
+                </div>
+            )}
+
             <div className="flex items-center gap-4 border-b border-[var(--glass-border)] pb-4">
                 <div className="relative w-full max-w-sm group">
                     <Search
@@ -81,7 +135,8 @@ export function SubscriptionsClient({ initial }: { initial: PaginatedResult<Subs
                                 <th>{t.subscriptions.table.plan}</th>
                                 <th>{t.subscriptions.table.price}</th>
                                 <th>{t.subscriptions.table.status}</th>
-                                <th className="text-right">{t.subscriptions.table.renewal}</th>
+                                <th>{t.subscriptions.table.renewal}</th>
+                                <th className="text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -94,7 +149,7 @@ export function SubscriptionsClient({ initial }: { initial: PaginatedResult<Subs
                             ) : filtered.map((sub) => {
                                 const initialStr = (sub.userName && sub.userName !== '—' ? sub.userName : sub.userEmail).charAt(0).toUpperCase()
                                 const bgColor = getColorForInitial(initialStr)
-                                const isPremium = sub.planName.toLowerCase().includes('pro') || sub.planName.toLowerCase().includes('team')
+                                const isPremium = sub.planName.toLowerCase().includes('pro') || sub.planName.toLowerCase().includes('team') || sub.planName.toLowerCase().includes('premium')
 
                                 return (
                                     <tr key={sub.id} className="group">
@@ -125,7 +180,7 @@ export function SubscriptionsClient({ initial }: { initial: PaginatedResult<Subs
                                         <td>
                                             <div className="font-mono text-sm tracking-tight text-slate-300">
                                                 {formatPrice(sub.planPrice, t)}
-                                                {sub.planPrice > 0 && <span className="text-xs text-muted-foreground">/{sub.interval === 'month' ? (t.locale === 'fr' ? 'mois' : 'mo') : (t.locale === 'fr' ? 'an' : 'yr')}</span>}
+                                                {sub.planPrice > 0 && <span className="text-xs text-muted-foreground">/{sub.interval === 'month' ? (locale === 'fr' ? 'mois' : 'mo') : (locale === 'fr' ? 'an' : 'yr')}</span>}
                                             </div>
                                         </td>
                                         <td>
@@ -137,19 +192,53 @@ export function SubscriptionsClient({ initial }: { initial: PaginatedResult<Subs
                                                 <Badge variant="outline" className="h-6 px-2.5 text-xs bg-amber-500/10 text-amber-500 border-amber-500/20">{(t.subscriptions.status as any)[sub.status] || sub.status}</Badge>
                                             )}
                                         </td>
-                                        <td className="text-right">
+                                        <td className="text-right whitespace-nowrap">
                                             {sub.currentPeriodEnd ? (
                                                 <div className="flex flex-col items-end">
                                                     <span className="text-sm text-[var(--page-fg)]">
-                                                        {new Date(sub.currentPeriodEnd).toLocaleDateString(t.locale === 'fr' ? 'fr-FR' : 'en-US')}
+                                                        {new Date(sub.currentPeriodEnd).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US')}
                                                     </span>
                                                     {sub.status === 'canceled' && (
-                                                        <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">{t.subscriptions.table.expires}</span>
+                                                        <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider font-mono">{t.subscriptions.table.expires}</span>
                                                     )}
                                                 </div>
                                             ) : (
                                                 <span className="text-sm text-muted-foreground">—</span>
                                             )}
+                                        </td>
+                                        <td className="text-right">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-white/5 data-[state=open]:bg-white/5">
+                                                        <span className="sr-only">Open menu</span>
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-[180px] bg-[var(--card-bg)] border-[var(--glass-border)] text-white">
+                                                    <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold font-mono">Operations</DropdownMenuLabel>
+                                                    <DropdownMenuSeparator className="bg-[var(--glass-border)]" />
+                                                    <Link href={`/dashboard/users?search=${sub.userEmail}`}>
+                                                        <DropdownMenuItem className="hover:bg-white/5 cursor-pointer gap-2">
+                                                            <User className="w-4 h-4 text-primary" />
+                                                            Voir l'utilisateur
+                                                        </DropdownMenuItem>
+                                                    </Link>
+                                                    <DropdownMenuItem className="hover:bg-white/5 cursor-pointer gap-2">
+                                                        <Receipt className="w-4 h-4 text-slate-400" />
+                                                        Factures Stripe
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator className="bg-[var(--glass-border)]" />
+                                                    {sub.status === 'active' && (
+                                                        <DropdownMenuItem
+                                                            onClick={() => setRefundModal({ isOpen: true, subId: sub.id })}
+                                                            className="text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer gap-2"
+                                                        >
+                                                            <Banknote className="w-4 h-4" />
+                                                            Rembourser
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </td>
                                     </tr>
                                 )
@@ -179,6 +268,17 @@ export function SubscriptionsClient({ initial }: { initial: PaginatedResult<Subs
                     </div>
                 )}
             </div>
+
+            <ConfirmModal
+                isOpen={refundModal.isOpen}
+                variant="danger"
+                title="Rembourser l'abonnement"
+                description="Êtes-vous sûr de vouloir rembourser cet abonnement ? L'utilisateur perdra son accès Premium immédiatement."
+                confirmLabel="Rembourser"
+                onConfirm={confirmRefund}
+                onCancel={() => setRefundModal({ isOpen: false, subId: null })}
+                isPending={isPending}
+            />
         </div>
     )
 }

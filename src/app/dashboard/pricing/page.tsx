@@ -101,14 +101,14 @@ export default async function PricingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {plans.map((plan: any, idx: number) => {
               const features = plan.features as PlanFeatures
-              const isPopular = plan.name.toLowerCase().includes('pro')
+              const isPopular = !!features.isPopular
               const priceLabel = formatPrice(plan.price)
 
               return (
                 <div key={plan.id} className="group relative flex flex-col p-6 rounded-2xl bg-[var(--card-bg)] border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
                   style={{
-                    borderColor: isPopular ? 'rgba(139,92,246,0.3)' : 'var(--glass-border)',
-                    boxShadow: isPopular ? '0 10px 40px -10px rgba(139,92,246,0.15)' : 'none'
+                    borderColor: isPopular ? 'rgba(139,92,246,0.5)' : 'var(--glass-border)',
+                    boxShadow: isPopular ? '0 10px 40px -10px rgba(139,92,246,0.2)' : 'none'
                   }}>
 
                   {isPopular && (
@@ -201,17 +201,17 @@ export default async function PricingPage() {
 
                   {canEditPlans && (
                     <div className="flex items-center gap-2 mt-auto pt-4 border-t border-[var(--glass-border)]">
-                      {plan.price === 0 && (
+                      {!plan.stripePriceId && (
                         <div className="flex-1">
                           <CreatePlanDialog
                             initialData={plan as any}
-                            triggerLabel="Configurer le Pack Gratuit"
+                            triggerLabel={plan.price === 0 ? "Configurer le Pack Gratuit" : "Modifier le Plan"}
                             triggerVariant="outline"
                           />
                         </div>
                       )}
 
-                      {plan.price === 0 && !plan.stripePriceId && (
+                      {!plan.stripePriceId && (
                         <DeletePlanButton
                           planId={plan.id}
                           planName={plan.name}
