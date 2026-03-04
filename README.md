@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TechWatch Admin
 
-## Getting Started
+Application d'administration pour la plateforme TechWatch.
 
-First, run the development server:
+## 🚀 Démarrage
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+1. **Installer les dépendances**
+   ```bash
+   npm install
+   ```
+
+2. **Configurer les variables d'environnement**
+   ```bash
+   cp env-example.txt .env
+   cp env-public-example.txt .env.local
+   ```
+
+3. **Configurer la base de données**
+   - Mettre à jour `DATABASE_URL` dans `.env`
+   - Lancer les migrations :
+   ```bash
+   npx prisma migrate dev
+   ```
+
+4. **Démarrer le serveur de développement**
+   ```bash
+   npm run dev
+   ```
+
+L'application sera disponible sur `http://localhost:3001`
+
+## 📁 Structure
+
+```
+admin/
+├── src/
+│   ├── app/                    # Pages Next.js
+│   │   ├── (auth)/            # Pages d'authentification
+│   │   ├── dashboard/         # Pages admin protégées
+│   │   └── api/               # API routes
+│   ├── components/            # Composants React
+│   │   ├── auth/              # Authentification
+│   │   ├── layout/            # Layout components
+│   │   ├── tasks/             # Gestion des tâches
+│   │   └── ui/                # UI components
+│   └── lib/                   # Utilitaires
+│       ├── auth.ts            # Configuration Better-Auth
+│       ├── auth-client.ts     # Client auth
+│       ├── prisma.ts          # Client Prisma
+│       └── utils.ts           # Fonctions utilitaires
+├── prisma/
+│   └── schema.prisma          # Schéma de base de données
+└── public/                    # Fichiers statiques
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🔐 Authentification
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+L'application utilise **Better-Auth** avec :
+- Login par email/mot de passe
+- Rôles : SUPER_ADMIN, ADMIN, SUPPORT, READ_ONLY
+- Sessions sécurisées
+- Pas d'OAuth Google (admin uniquement)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🎨 Design System
 
-## Learn More
+- **Palette** : Neutral + accent-primary `#7C3AED`
+- **Framework** : TailwindCSS v4 + shadcn/ui
+- **Thème** : Dark/Light mode
+- **Composants** : LottieLoader adapté de app-client
 
-To learn more about Next.js, take a look at the following resources:
+## 📊 Fonctionnalités
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### ✅ Implémentées
+- [x] Authentification sécurisée
+- [x] Dashboard avec statistiques
+- [x] Sidebar navigation moderne
+- [x] Système de tâches complet
+- [x] Design system cohérent
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 🚧 À développer
+- [ ] Gestion des utilisateurs (CRUD)
+- [ ] DataTables avancées
+- [ ] Gestion des TechWatch
+- [ ] Statistiques et analytics
+- [ ] Paramètres système
 
-## Deploy on Vercel
+## 🛠️ Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Framework** : Next.js 15+ (App Router)
+- **Authentification** : Better-Auth
+- **Base de données** : PostgreSQL + Prisma
+- **UI** : TailwindCSS + shadcn/ui
+- **Animations** : Lottie React
+- **Icons** : Lucide React
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📝 Notes
+
+- Port par défaut : **3001**
+- Base de données partagée avec app-client
+- Structure `features/` comme app-client
+- Composants réutilisables et modulaires

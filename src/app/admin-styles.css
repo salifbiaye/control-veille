@@ -1,0 +1,201 @@
+/* ── Admin Design System Tokens ── */
+:root {
+  /* Admin theme colors */
+  --accent-primary: var(--brand);
+  --accent-primary-bg: color-mix(in srgb, var(--brand) 8%, transparent);
+  --accent-primary-hover: color-mix(in srgb, var(--brand) 12%, transparent);
+  --accent-primary-active: color-mix(in srgb, var(--brand) 16%, transparent);
+}
+
+.dark {
+  --accent-primary: var(--brand);
+  --accent-primary-bg: color-mix(in srgb, var(--brand) 8%, transparent);
+  --accent-primary-hover: color-mix(in srgb, var(--brand) 12%, transparent);
+  --accent-primary-active: color-mix(in srgb, var(--brand) 16%, transparent);
+}
+
+/* ── Admin Layout Classes ── */
+.admin-layout {
+  @apply min-h-screen bg-background;
+}
+
+.admin-sidebar {
+  @apply w-64 bg-card border-r border-border min-h-screen;
+}
+
+.admin-header {
+  @apply h-16 border-b border-border bg-card/50 backdrop-blur-sm;
+}
+
+.admin-content {
+  @apply flex-1 p-6;
+}
+
+.admin-card {
+  @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+}
+
+.admin-table {
+  @apply w-full border-0;
+}
+
+.admin-table th {
+  @apply border-b border-border bg-muted/50 font-medium;
+}
+
+.admin-table td {
+  @apply border-b border-border;
+}
+
+/* ── Auth Form Styles (inspiré de app-client) ── */
+.auth-form-card {
+  @apply rounded-2xl p-8 border backdrop-blur-xl;
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.dark .auth-form-card {
+  background: rgba(14, 14, 24, 0.9);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.auth-form-title {
+  @apply text-xl font-bold;
+  color: #FFFFFF;
+}
+
+.auth-form-subtitle {
+  @apply text-sm mt-1;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.auth-form-label {
+  @apply block text-xs font-medium mb-1.5;
+  color: rgba(248, 250, 252, 0.70);
+}
+
+.auth-form-icon {
+  @apply text-muted-foreground;
+  color: rgba(248, 250, 252, 0.40);
+}
+
+.auth-form-hint {
+  @apply text-xs;
+  color: rgba(248, 250, 252, 0.40);
+}
+
+.auth-form-divider {
+  @apply h-px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.auth-form-input {
+  @apply w-full pl-9 pr-4 py-2.5 rounded-lg text-sm focus:outline-none;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #FFFFFF;
+}
+
+.auth-form-input::placeholder {
+  color: rgba(248, 250, 252, 0.30);
+}
+
+.auth-form-input:focus {
+  border-color: color-mix(in srgb, var(--brand) 50%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 10%, transparent);
+}
+
+.auth-form-submit {
+  @apply w-full flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold text-sm transition-all text-primary-foreground bg-primary;
+}
+
+.auth-form-submit:hover {
+  @apply bg-primary/90;
+}
+
+.auth-form-submit:disabled {
+  @apply bg-primary/50;
+}
+
+/* ── Sidebar Navigation Styles ── */
+.nav-link {
+  @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all;
+}
+
+.nav-link:hover {
+  @apply bg-muted text-primary;
+  transform: translateX(2px);
+}
+
+.nav-link-active {
+  @apply bg-primary text-primary-foreground;
+}
+
+/* ── Button Variants ── */
+.btn-primary {
+  @apply bg-primary text-primary-foreground hover:bg-primary/90;
+}
+
+.btn-secondary {
+  @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
+}
+
+.btn-outline {
+  @apply border border-input bg-background hover:bg-accent hover:text-accent-foreground;
+}
+
+.btn-ghost {
+  @apply hover:bg-accent hover:text-accent-foreground;
+}
+
+/* ── Status Colors ── */
+.status-active {
+  @apply text-green-600 bg-green-100 border-green-200;
+}
+
+.status-inactive {
+  @apply text-red-600 bg-red-100 border-red-200;
+}
+
+.status-pending {
+  @apply text-yellow-600 bg-yellow-100 border-yellow-200;
+}
+
+.dark .status-active {
+  @apply text-green-400 bg-green-900/30 border-green-800;
+}
+
+.dark .status-inactive {
+  @apply text-red-400 bg-red-900/30 border-red-800;
+}
+
+.dark .status-pending {
+  @apply text-yellow-400 bg-yellow-900/30 border-yellow-800;
+}
+
+/* ── Priority Colors ── */
+.priority-high {
+  @apply text-red-600 bg-red-100 border-red-200;
+}
+
+.priority-medium {
+  @apply text-yellow-600 bg-yellow-100 border-yellow-200;
+}
+
+.priority-low {
+  @apply text-primary bg-primary/10 border-primary/20;
+}
+
+.dark .priority-high {
+  @apply text-red-400 bg-red-900/30 border-red-800;
+}
+
+.dark .priority-medium {
+  @apply text-yellow-400 bg-yellow-900/30 border-yellow-800;
+}
+
+.dark .priority-low {
+  @apply text-primary bg-primary/20 border-primary/30;
+}

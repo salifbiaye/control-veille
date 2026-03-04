@@ -1,0 +1,534 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────
+// ADMIN AUTH MODELS (tables: admin_users, admin_accounts, admin_sessions)
+// ─────────────────────────────────────────────────────────────
+
+
+
+// ─────────────────────────────────────────────────────────────
+// SHARED MODELS — app-client tables (same DB)
+// ─────────────────────────────────────────────────────────────
+
+model user {
+  id            String        @id
+  name          String        @default("")
+  email         String        @unique
+  emailVerified Boolean       @default(false)
+  image         String?
+  role          String        @default("USER")
+  permissions   String[]      @default([])
+  createdAt     DateTime
+  updatedAt     DateTime
+  companion     String?
+  storageUsed   Int           @default(0)
+  toursEnabled  Boolean       @default(true)
+  chatSessions  ChatSession[]
+  folders       Folder[]
+  resources     Resource[]
+  techWatches   TechWatch[]
+  accounts      account[]
+  sessions      session[]
+  snippets      Snippet[]
+  subscription  Subscription?
+}
+
+model session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+  user                  user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+}
+
+model Plan {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  slug          String         @unique
+  price         Int
+  interval      String         @default("month")
+  features      Json
+  isActive      Boolean        @default(true)
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subscriptions Subscription[]
+  promotions    Promotion[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  planId           String
+  status           String    @default("active")
+  currentPeriodEnd DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             user      @relation(fields: [userId], references: [id])
+  plan             Plan      @relation(fields: [planId], references: [id])
+}
+
+model Promotion {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  planId        String?
+  discountType  String
+  discountValue Int
+  maxUses       Int?
+  usedCount     Int       @default(0)
+  expiresAt     DateTime?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  plan          Plan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  @@map("promotions")
+}
+
+model TechWatch {
+  id              String          @id @default(cuid())
+  userId          String
+  name            String
+  slug            String
+  description     String?
+  color           String          @default("#7C3AED")
+  accentColor     String?
+  iconEmoji       String?
+  rssUrl          String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @default(now())
+  logoUrl         String?
+  githubStars     Int?
+  githubUrl       String?
+  articles        Article[]
+  certifications  Certification[]
+  chatSessions    ChatSession[]
+  comparisons     Comparison[]
+  courses         Course[]
+  folders         Folder[]
+  mindMapEdges    MindMapEdge[]
+  mindMapNodes    MindMapNode[]
+  mindMapNotes    MindMapNote[]
+  notes           Note[]
+  quickLinks      QuickLink[]
+  resources       Resource[]
+  roadmapEdges    RoadmapEdge[]
+  roadmapNodes    RoadmapNode[]
+  tasks           Task[]
+  snippets        Snippet[]
+  user            user            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timelineEntries TimelineEntry[]
+
+  @@unique([userId, slug])
+}
+
+model ChatSession {
+  id          String        @id @default(cuid())
+  userId      String
+  techWatchId String?
+  title       String        @default("Nouvelle conversation")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  companion   String?
+  status      String        @default("idle")
+  messages    ChatMessage[]
+  techWatch   TechWatch?    @relation(fields: [techWatchId], references: [id])
+  user        user          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courses     Course[]
+}
+
+model ChatMessage {
+  id              String      @id @default(cuid())
+  sessionId       String
+  role            String
+  content         String
+  toolInvocations Json?
+  createdAt       DateTime    @default(now())
+  session         ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model Article {
+  id          String    @id @default(cuid())
+  techWatchId String
+  title       String
+  description String?
+  url         String
+  category    String
+  date        DateTime  @default(now())
+  readTime    Int?
+  featured    Boolean   @default(false)
+  imageUrl    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  techWatch   TechWatch @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  techWatchId String
+  title       String
+  description String?
+  completed   Boolean   @default(false)
+  priority    String    @default("normal")
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  techWatch   TechWatch @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+}
+
+model TimelineEntry {
+  id          String    @id @default(cuid())
+  techWatchId String
+  version     String
+  name        String
+  releaseDate DateTime
+  eolDate     DateTime?
+  status      String
+  highlights  String[]
+  blogUrl     String?
+  cveCount    Int?
+  cveIds      String[]  @default([])
+  impactScore Int?
+  isStable    Boolean   @default(true)
+  source      String    @default("MANUAL")
+  type        String    @default("MINOR")
+  techWatch   TechWatch @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+}
+
+model Resource {
+  id          String    @id @default(cuid())
+  techWatchId String
+  title       String
+  description String?
+  url         String
+  type        String
+  category    String
+  tags        String[]
+  official    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  filePath    String?
+  fileSize    Int?
+  folderId    String?
+  metadata    Json?     @default("{}")
+  name        String?
+  previewUrl  String?
+  userId      String?
+  pinned      Boolean   @default(false)
+  folder      Folder?   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  techWatch   TechWatch @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+  user        user?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([techWatchId])
+  @@index([folderId])
+  @@index([userId])
+}
+
+model Folder {
+  id          String     @id @default(cuid())
+  name        String
+  parentId    String?
+  techWatchId String
+  userId      String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+  pinned      Boolean    @default(false)
+  parent      Folder?    @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Folder[]   @relation("FolderHierarchy")
+  techWatch   TechWatch  @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+  user        user       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resources   Resource[]
+
+  @@index([techWatchId])
+  @@index([userId])
+  @@index([parentId])
+}
+
+model QuickLink {
+  id          String    @id @default(cuid())
+  techWatchId String
+  label       String
+  url         String
+  icon        String?
+  order       Int       @default(0)
+  techWatch   TechWatch @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+}
+
+model MindMapNode {
+  id          String        @id @default(cuid())
+  techWatchId String
+  label       String
+  x           Float         @default(100)
+  y           Float         @default(100)
+  color       String?
+  height      Float         @default(48)
+  width       Float         @default(144)
+  edgesFrom   MindMapEdge[] @relation("EdgeFrom")
+  edgesTo     MindMapEdge[] @relation("EdgeTo")
+  techWatch   TechWatch     @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+}
+
+model MindMapEdge {
+  id          String      @id @default(cuid())
+  techWatchId String
+  sourceId    String
+  targetId    String
+  source      MindMapNode @relation("EdgeFrom", fields: [sourceId], references: [id], onDelete: Cascade)
+  target      MindMapNode @relation("EdgeTo", fields: [targetId], references: [id], onDelete: Cascade)
+  techWatch   TechWatch   @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+}
+
+model MindMapNote {
+  id          String    @id @default(cuid())
+  techWatchId String
+  label       String
+  x           Float     @default(100)
+  y           Float     @default(100)
+  width       Float     @default(400)
+  height      Float     @default(300)
+  color       String?
+  techWatch   TechWatch @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+}
+
+model RoadmapNode {
+  id           String        @id @default(cuid())
+  techWatchId  String
+  label        String
+  description  String?
+  x            Float         @default(200)
+  y            Float         @default(200)
+  width        Float         @default(220)
+  height       Float         @default(64)
+  status       String        @default("not-started")
+  masteryScore Int           @default(0)
+  notes        String?
+  color        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @default(now())
+  edgesFrom    RoadmapEdge[] @relation("RFrom")
+  edgesTo      RoadmapEdge[] @relation("RTo")
+  techWatch    TechWatch     @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+}
+
+model RoadmapEdge {
+  id          String      @id @default(cuid())
+  techWatchId String
+  sourceId    String
+  targetId    String
+  type        String      @default("prerequisite")
+  source      RoadmapNode @relation("RFrom", fields: [sourceId], references: [id], onDelete: Cascade)
+  target      RoadmapNode @relation("RTo", fields: [targetId], references: [id], onDelete: Cascade)
+  techWatch   TechWatch   @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+}
+
+model Note {
+  id          String    @id @default(cuid())
+  techWatchId String
+  title       String
+  content     String
+  category    String?
+  tags        String[]  @default([])
+  pinned      Boolean   @default(false)
+  color       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  techWatch   TechWatch @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+}
+
+model Certification {
+  id           String    @id @default(cuid())
+  techWatchId  String
+  title        String
+  issuer       String
+  url          String
+  imageUrl     String?
+  level        String?
+  obtainedAt   DateTime?
+  expiresAt    DateTime?
+  score        String?
+  credentialId String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  techWatch    TechWatch @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+}
+
+model Comparison {
+  id          String    @id @default(cuid())
+  techWatchId String
+  title       String
+  vsName      String
+  vsColor     String    @default("#6B7280")
+  vsLogoUrl   String?
+  criteria    Json
+  mainPros    String[]  @default([])
+  mainCons    String[]  @default([])
+  vsPros      String[]  @default([])
+  vsCons      String[]  @default([])
+  mainUseWhen String?
+  vsUseWhen   String?
+  summary     String?
+  verdict     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  techWatch   TechWatch @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+}
+
+model AiConfig {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  provider       String   @default("groq")
+  apiKey         String
+  model          String   @default("llama-3.3-70b-versatile")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now())
+  searchApiKey   String?
+  searchProvider String?
+  youtubeApiKey  String?
+}
+
+model Course {
+  id            String             @id @default(cuid())
+  techWatchId   String
+  companion     String
+  title         String
+  description   String?
+  category      String?
+  level         String             @default("débutant")
+  tags          String[]
+  coverImage    String?
+  isPublished   Boolean            @default(false)
+  similarLinks  Json               @default("[]")
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  sessionId     String?
+  companionNote String?
+  chatSession   ChatSession?       @relation(fields: [sessionId], references: [id])
+  techWatch     TechWatch          @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+  enrollments   CourseEnrollment[]
+  sections      CourseSection[]
+
+  @@index([techWatchId])
+}
+
+model CourseSection {
+  id       String       @id @default(cuid())
+  courseId String
+  title    String
+  content  String
+  order    Int
+  duration Int?
+  quizzes  CourseQuiz[]
+  course   Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId])
+}
+
+model CourseQuiz {
+  id          String        @id @default(cuid())
+  sectionId   String
+  question    String
+  options     String[]
+  answer      Int
+  explanation String?
+  section     CourseSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+}
+
+model CourseEnrollment {
+  id                String    @id @default(cuid())
+  courseId          String
+  userId            String
+  completedSections String[]
+  quizScores        Json      @default("{}")
+  progress          Int       @default(0)
+  startedAt         DateTime  @default(now())
+  completedAt       DateTime?
+  course            Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, userId])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  techWatchId String
+  date        DateTime @default(now())
+  articles    Int      @default(0)
+  tasks       Int      @default(0)
+  resources   Int      @default(0)
+
+  @@unique([techWatchId, date])
+}
+
+model CompletedTour {
+  id          String   @id @default(cuid())
+  userId      String
+  tourKey     String
+  completedAt DateTime @default(now())
+
+  @@unique([userId, tourKey])
+  @@index([userId])
+}
+
+model Snippet {
+  id               String    @id @default(cuid())
+  userId           String
+  techWatchId      String
+  title            String
+  description      String?
+  technology       String
+  language         String    @default("plaintext")
+  code             String    @db.Text
+  tags             String[]  @default([])
+  isFavorite       Boolean   @default(false)
+  isPrivate        Boolean   @default(true)
+  aiGenerated      Boolean   @default(false)
+  executionEnabled Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user      user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  techWatch TechWatch @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([technology])
+  @@index([techWatchId])
+}
