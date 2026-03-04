@@ -1,16 +1,36 @@
 import { CreditCard, Tag, Check, X as XIcon, Edit, Trash2, Zap, LayoutGrid, Rocket, Info } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { getPlans, getPromotions, PlanFeatures } from '@/features/pricing/actions/pricing.actions'
+import { getPlans, getPromotions } from '@/features/pricing/actions/pricing.actions'
 import { CreatePlanDialog } from '@/features/pricing/components/CreatePlanDialog'
+import { DeletePlanButton } from '@/features/pricing/components/DeletePlanButton'
 import { CreatePromoDialog } from '@/features/pricing/components/CreatePromoDialog'
 import { PageHero } from '@/components/ui/PageHero'
 import { Button } from '@/components/ui/button'
 import { cookies } from 'next/headers'
 import { getT, type Locale } from '@/lib/i18n'
-import { getSession } from '@/lib/session'
+import { getSession, requirePermission } from '@/lib/session'
 import { hasPermission, type AdminRole } from '@/lib/permissions'
 
+export interface PlanFeatures {
+  techWatches: number
+  notes: number
+  storage: number
+  companion: boolean
+  courses: number
+  interviews: boolean
+  aiTools: boolean
+  mindmaps: boolean
+  roadmap: boolean
+  comparisons: boolean
+  chatHistory: boolean
+  articles: number
+  tasks: number
+  resources: number
+  [key: string]: number | boolean
+}
+
 export default async function PricingPage() {
+  await requirePermission('VIEW_PLANS')
   const cookieStore = await cookies()
   const lang = (cookieStore.get('NEXT_LOCALE')?.value as Locale) || 'fr'
   const t = getT(lang)
@@ -57,7 +77,25 @@ export default async function PricingPage() {
               </h2>
               <p className="text-sm text-muted-foreground mt-1">Offres actuellement synchronisées avec l'application client.</p>
             </div>
-            {canEditPlans && <CreatePlanDialog />}
+            <div className="flex items-center gap-3">
+              {canEditPlans && (
+                <>
+                  {plans.find((p: any) => p.price === 0) ? (
+                    <CreatePlanDialog
+                      initialData={plans.find((p: any) => p.price === 0) as any}
+                      triggerLabel="Configurer le Pack Gratuit"
+                      triggerVariant="outline"
+                    />
+                  ) : (
+                    <CreatePlanDialog
+                      triggerLabel="Créer Pack Gratuit"
+                      triggerVariant="outline"
+                      defaultPrice={0}
+                    />
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -108,24 +146,80 @@ export default async function PricingPage() {
                     <ul className="space-y-2.5 text-sm">
                       <li className="flex items-center gap-3 text-slate-300">
                         <div className="p-0.5 rounded-full bg-emerald-500/20 text-emerald-400"><Check className="w-3 h-3" strokeWidth={3} /></div>
-                        <span className="font-medium text-white">{features.storage ? (features.storage / 1073741824).toFixed(0) : '0'} GB</span> d'espace de stockage
+                        <span className="font-medium text-white">{features.techWatches === -1 ? 'Illimités' : (features.techWatches || '0')}</span> TechWatches
+                      </li>
+                      <li className="flex items-center gap-3 text-slate-300">
+                        <div className="p-0.5 rounded-full bg-emerald-500/20 text-emerald-400"><Check className="w-3 h-3" strokeWidth={3} /></div>
+                        <span className="font-medium text-white">{features.notes === -1 ? 'Illimitées' : (features.notes || '0')}</span> Notes / TechWatch
+                      </li>
+                      <li className="flex items-center gap-3 text-slate-300">
+                        <div className="p-0.5 rounded-full bg-emerald-500/20 text-emerald-400"><Check className="w-3 h-3" strokeWidth={3} /></div>
+                        <span className="font-medium text-white">{features.storage && features.storage >= 1073741824 ? (features.storage / 1073741824).toFixed(0) : (features.storage ? (features.storage / 1048576).toFixed(0) : '0')} {features.storage && features.storage >= 1073741824 ? 'GB' : 'MB'}</span> d'espace de stockage
                       </li>
                       <li className="flex items-center gap-3 text-slate-300">
                         {features.companion ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
-                        <span className={features.companion ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>IA Companion</span>
+                        <span className={features.companion ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>Assistant IA</span>
                       </li>
                       <li className="flex items-center gap-3 text-slate-300">
                         {features.courses ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
-                        <span className={features.courses ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>Accès illimité aux cours</span>
+                        <span className={features.courses ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>{features.courses === -1 ? 'Création de cours illimitée' : (Number(features.courses) > 0 ? `${features.courses} Création de cours` : 'Pas de création de cours')}</span>
+                      </li>
+                      <li className="flex items-center gap-3 text-slate-300">
+                        {features.mindmaps ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
+                        <span className={features.mindmaps ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>Mindmaps</span>
+                      </li>
+                      <li className="flex items-center gap-3 text-slate-300">
+                        {features.roadmap ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
+                        <span className={features.roadmap ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>Roadmaps</span>
+                      </li>
+                      <li className="flex items-center gap-3 text-slate-300">
+                        {features.comparisons ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
+                        <span className={features.comparisons ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>Comparatifs</span>
                       </li>
                       <li className="flex items-center gap-3 text-slate-300">
                         {features.interviews ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
-                        <span className={features.interviews ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>Simulateur d'entretiens</span>
+                        <span className={features.interviews ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>Simulateur & Quiz</span>
+                      </li>
+                      <li className="flex items-center gap-3 text-slate-300">
+                        {features.chatHistory ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
+                        <span className={features.chatHistory ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>Historique des discussions IA</span>
+                      </li>
+                      <li className="flex items-center gap-3 text-slate-300">
+                        <div className="p-0.5 rounded-full bg-blue-500/20 text-blue-400"><Check className="w-3 h-3" strokeWidth={3} /></div>
+                        <span className="font-medium text-white">{features.articles === -1 ? 'Illimités' : (features.articles || '0')}</span> Articles autorisés
+                      </li>
+                      <li className="flex items-center gap-3 text-slate-300">
+                        <div className="p-0.5 rounded-full bg-blue-500/20 text-blue-400"><Check className="w-3 h-3" strokeWidth={3} /></div>
+                        <span className="font-medium text-white">{features.tasks === -1 ? 'Illimitées' : (features.tasks || '0')}</span> Tâches autorisées
+                      </li>
+                      <li className="flex items-center gap-3 text-slate-300">
+                        <div className="p-0.5 rounded-full bg-blue-500/20 text-blue-400"><Check className="w-3 h-3" strokeWidth={3} /></div>
+                        <span className="font-medium text-white">{features.resources === -1 ? 'Illimitées' : (features.resources || '0')}</span> Ressources autorisées
                       </li>
                     </ul>
                   </div>
 
-                  {canEditPlans && <CreatePlanDialog initialData={plan} />}
+                  {canEditPlans && (
+                    <div className="flex items-center gap-2 mt-auto pt-4 border-t border-[var(--glass-border)]">
+                      {plan.price === 0 && (
+                        <div className="flex-1">
+                          <CreatePlanDialog
+                            initialData={plan as any}
+                            triggerLabel="Configurer le Pack Gratuit"
+                            triggerVariant="outline"
+                          />
+                        </div>
+                      )}
+
+                      {plan.price === 0 && !plan.stripePriceId && (
+                        <DeletePlanButton
+                          planId={plan.id}
+                          planName={plan.name}
+                          hasSubscriptions={plan._count.subscriptions > 0}
+                        />
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}

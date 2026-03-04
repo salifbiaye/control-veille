@@ -4,12 +4,14 @@ import { PageHero } from '@/components/ui/PageHero'
 import { Users } from 'lucide-react'
 import { cookies } from 'next/headers'
 import { getT, type Locale } from '@/lib/i18n'
+import { requirePermission } from '@/lib/session'
 
 export default async function UsersPage({
   searchParams,
 }: {
   searchParams: Promise<{ page?: string }>
 }) {
+  await requirePermission('VIEW_USERS')
   const cookieStore = await cookies()
   const lang = (cookieStore.get('NEXT_LOCALE')?.value as Locale) || 'fr'
   const t = getT(lang)

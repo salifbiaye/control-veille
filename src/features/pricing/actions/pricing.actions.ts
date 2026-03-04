@@ -13,9 +13,16 @@ export interface PlanFeatures {
     notes: number
     storage: number // bytes
     companion: boolean
-    courses: boolean
+    courses: number
     interviews: boolean
     aiTools: boolean
+    mindmaps: boolean
+    roadmap: boolean
+    comparisons: boolean
+    chatHistory: boolean
+    articles: number
+    tasks: number
+    resources: number
     [key: string]: number | boolean
 }
 

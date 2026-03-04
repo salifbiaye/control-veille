@@ -5,13 +5,13 @@ import { auth } from "@/lib/auth"
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // 🔥 Validation réelle de session admin
+  // 🔥 Validate admin session (1 DB call — also used by role checks below)
   const session = await auth.api.getSession({
     headers: req.headers,
   })
 
-  console.log("ADMIN SESSION:", !!session)
-  console.log("ADMIN PATH:", pathname)
+  // Role comes from the cryptographically-validated session — no extra DB call needed
+  const userRole: string = (session?.user as any)?.role ?? 'USER'
 
   // 🔒 Routes protégées - nécessitent une session admin
   if (!session && pathname.startsWith("/dashboard")) {
@@ -23,23 +23,20 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", req.url))
   }
 
-  // 🛡️ Vérification des rôles pour certaines routes
+  // 🛡️ Role-based route protection
   if (session && pathname.startsWith("/dashboard/users")) {
-    const userRole = session.user.role || 'READ_ONLY'
     if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
       return NextResponse.redirect(new URL("/dashboard", req.url))
     }
   }
 
   if (session && pathname.startsWith("/dashboard/pricing")) {
-    const userRole = session.user.role || 'READ_ONLY'
     if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
       return NextResponse.redirect(new URL("/dashboard", req.url))
     }
   }
 
   if (session && pathname.startsWith("/dashboard/techwatches")) {
-    const userRole = session.user.role || 'READ_ONLY'
     if (!['SUPPORT', 'ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
       return NextResponse.redirect(new URL("/dashboard", req.url))
     }

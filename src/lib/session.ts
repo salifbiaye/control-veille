@@ -37,7 +37,7 @@ export async function requirePermission(permission: keyof typeof ADMIN_PERMISSIO
     const role = ((adminUser.role as AdminRole) || 'READ_ONLY')
 
     if (!hasPermission(role, permission)) {
-        throw new Error(`Permission denied: ${permission} (role: ${role})`)
+        redirect('/dashboard')
     }
 
     return session

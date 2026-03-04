@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma'
+import { requirePermission } from '@/lib/session'
 
 export async function getDashboardStats() {
+  await requirePermission('VIEW_DASHBOARD')
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
   const [
@@ -74,6 +76,7 @@ export async function getDashboardStats() {
 }
 
 export async function getUsersList(page = 1, limit = 20) {
+  await requirePermission('VIEW_USERS')
   const skip = (page - 1) * limit
 
   const [users, total] = await Promise.all([
@@ -105,6 +108,7 @@ export async function getUsersList(page = 1, limit = 20) {
 }
 
 export async function getTechWatchesList(page = 1, limit = 20) {
+  await requirePermission('VIEW_TECHWATCHES')
   const skip = (page - 1) * limit
 
   const [techWatches, total] = await Promise.all([

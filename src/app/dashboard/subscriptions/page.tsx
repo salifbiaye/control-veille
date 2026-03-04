@@ -4,6 +4,7 @@ import { getSubscriptions } from '@/features/subscriptions/actions/subscriptions
 import { SubscriptionsClient } from '@/features/subscriptions/components/SubscriptionsClient'
 import { cookies } from 'next/headers'
 import { getT, type Locale } from '@/lib/i18n'
+import { requirePermission } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,7 @@ export default async function SubscriptionsPage({
 }: {
     searchParams: Promise<{ page?: string }>
 }) {
+    await requirePermission('VIEW_ANALYTICS')
     const cookieStore = await cookies()
     const lang = (cookieStore.get('NEXT_LOCALE')?.value as Locale) || 'fr'
     const t = getT(lang)

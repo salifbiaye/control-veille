@@ -22,10 +22,9 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, exact: true, permission: 'VIEW_DASHBOARD' as const },
   { name: 'Utilisateurs', href: '/dashboard/users', icon: Users, permission: 'VIEW_USERS' as const },
   { name: 'Plans & Tarifs', href: '/dashboard/pricing', icon: CreditCard, permission: 'VIEW_PLANS' as const },
-  { name: 'Souscriptions', href: '/dashboard/subscriptions', icon: Receipt, permission: 'VIEW_PLANS' as const },
+  { name: 'Souscriptions', href: '/dashboard/subscriptions', icon: Receipt, permission: 'VIEW_ANALYTICS' as const },
   { name: 'TechWatch', href: '/dashboard/techwatches', icon: Database, permission: 'VIEW_TECHWATCHES' as const },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, permission: 'VIEW_ANALYTICS' as const },
-  { name: 'Paramètres', href: '/dashboard/settings', icon: Settings, permission: 'VIEW_SETTINGS' as const },
 ]
 
 interface SidebarProps {
@@ -150,28 +149,31 @@ export function Sidebar({ user }: SidebarProps) {
         style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
       >
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden"
-            style={{
-              background: `color-mix(in srgb, ${BRAND_COLOR} 20%, transparent)`,
-              color: 'var(--brand-light)',
-            }}
-          >
-            {user?.image && !user.image.includes('googleusercontent.com') ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.image} alt={userName} className="w-7 h-7 object-cover" />
-            ) : (
-              userInitial
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium truncate" style={{ color: '#F8FAFC' }}>
-              {userName}
-            </p>
-            <p className="text-[10px] truncate" style={{ color: 'rgba(248,250,252,0.40)' }}>
-              {userRole}
-            </p>
-          </div>
+          <Link href="/dashboard/settings" className="flex items-center gap-2.5 min-w-0 flex-1 hover:bg-[rgba(255,255,255,0.05)] p-1 rounded-md transition-colors cursor-pointer group">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden"
+              style={{
+                background: `color-mix(in srgb, ${BRAND_COLOR} 20%, transparent)`,
+                color: 'var(--brand-light)',
+              }}
+            >
+              {user?.image && !user.image.includes('googleusercontent.com') ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.image} alt={userName} className="w-7 h-7 object-cover" />
+              ) : (
+                userInitial
+              )}
+            </div>
+            <div className="min-w-0 flex-1 group-hover:opacity-80 transition-opacity">
+              <p className="text-xs font-medium truncate" style={{ color: '#F8FAFC' }}>
+                {userName}
+              </p>
+              <p className="text-[10px] truncate" style={{ color: 'rgba(248,250,252,0.40)' }}>
+                {userRole}
+              </p>
+            </div>
+            <Settings className="w-4 h-4 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </Link>
           <div className="flex items-center gap-1 flex-shrink-0">
             <ThemeToggle />
             <AdminLogoutButton />

@@ -1,7 +1,7 @@
 import { Settings as SettingsIcon } from 'lucide-react'
 import { PageHero } from '@/components/ui/PageHero'
 import { SettingsClient } from '@/features/settings/components/SettingsClient'
-import { requireSession } from '@/lib/session'
+import { requirePermission } from '@/lib/session'
 import { cookies } from 'next/headers'
 import { getT, type Locale } from '@/lib/i18n'
 
@@ -10,7 +10,7 @@ export default async function SettingsPage() {
   const lang = (cookieStore.get('NEXT_LOCALE')?.value as Locale) || 'fr'
   const t = getT(lang)
 
-  const session = await requireSession()
+  const session = await requirePermission('VIEW_SETTINGS')
 
   return (
     <div className="animate-slide-up-fade">

@@ -26,9 +26,12 @@ export type ClientUser = {
     createdAt: Date
     techWatchCount: number
     storageUsed: number
-    storageLimit: number
+    storageLimit: number          // dynamique depuis plan.features.storage
     planName: string | null
     subscriptionStatus: string | null
+    isPremiumLifetime: boolean
+    currentPeriodEnd: Date | null
+    cancelAtPeriodEnd: boolean
 }
 
 export type PaginatedResult<T> = {
@@ -37,7 +40,7 @@ export type PaginatedResult<T> = {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Admin Users (table user, role != 'USER')
+// Admin Users
 // ─────────────────────────────────────────────────────────────
 
 export async function getAdminUsers(): Promise<AdminUser[]> {
@@ -72,17 +75,22 @@ export async function updateAdminUserRole(
     try {
         await requirePermission('EDIT_USERS')
 
-        // Anti-promotion/demotion guard
-        // We cannot promote a normal client to an admin here, nor demote an admin to a client.
         const targetUser = await prisma.user.findUnique({ where: { id }, select: { role: true } })
         if (!targetUser) return { success: false, error: 'Utilisateur non trouvé' }
-        if (targetUser.role === 'USER') return { success: false, error: 'Impossible de promouvoir un client' }
-        if (newRole as string === 'USER') return { success: false, error: 'Impossible de rétrograder en client' }
 
-        await prisma.user.update({
-            where: { id },
-            data: { role: newRole },
-        })
+        // 🔒 Impossible de modifier un SUPER_ADMIN
+        if (targetUser.role === 'SUPER_ADMIN') {
+            return { success: false, error: 'Impossible de modifier un Super Admin' }
+        }
+        // 🔒 Impossible de promouvoir à SUPER_ADMIN via l'interface normale
+        if (newRole === 'SUPER_ADMIN') {
+            return { success: false, error: 'Impossible de promouvoir directement au rang de Super Admin' }
+        }
+        // Anti-promotion/demotion guard (client ↔ admin)
+        if (targetUser.role === 'USER') return { success: false, error: 'Impossible de promouvoir un client' }
+        if ((newRole as string) === 'USER') return { success: false, error: 'Impossible de rétrograder en client' }
+
+        await prisma.user.update({ where: { id }, data: { role: newRole } })
         return { success: true }
     } catch (error) {
         console.error('[ADMIN_USERS] Update role error:', error)
@@ -99,20 +107,21 @@ export async function revokeAdminUser(
         const targetUser = await prisma.user.findUnique({ where: { id }, select: { role: true } })
         if (!targetUser || targetUser.role === 'USER') return { success: false, error: 'Action invalide' }
 
-        // Downgrade to READ_ONLY instead of deleting
-        await prisma.user.update({
-            where: { id },
-            data: { role: 'READ_ONLY' },
-        })
+        // 🔒 Un SUPER_ADMIN ne peut jamais être révoqué
+        if (targetUser.role === 'SUPER_ADMIN') {
+            return { success: false, error: 'Impossible de révoquer un Super Admin' }
+        }
+
+        await prisma.user.update({ where: { id }, data: { role: 'READ_ONLY' } })
         return { success: true }
     } catch (error) {
         console.error('[ADMIN_USERS] Revoke error:', error)
-        return { success: false, error: 'Impossible de révoquer l\'accès' }
+        return { success: false, error: "Impossible de révoquer l'accès" }
     }
 }
 
 // ─────────────────────────────────────────────────────────────
-// Client Users (table user, role == 'USER')
+// Client Users
 // ─────────────────────────────────────────────────────────────
 
 export async function getClientUsers(
@@ -132,11 +141,16 @@ export async function getClientUsers(
           u."emailVerified",
           u."createdAt",
           u."storageUsed",
-          -- u."storageLimit", // storageLimit doesn't exist on user table (was a mistake in previous query)
-          1024 * 1024 * 512 AS "storageLimit", -- 512MB default
+          u."isPremiumLifetime",
           COUNT(tw.id)::int AS "techWatchCount",
           MAX(s.status) AS "subscriptionStatus",
-          MAX(p.name) AS "planName"
+          MAX(s."currentPeriodEnd") AS "currentPeriodEnd",
+          BOOL_OR(s."cancelAtPeriodEnd") AS "cancelAtPeriodEnd",
+          MAX(p.name) AS "planName",
+          COALESCE(
+            (MAX(p.features::text)::jsonb->>'storage')::bigint,
+            536870912
+          ) AS "storageLimit"
         FROM "user" u
         LEFT JOIN "TechWatch" tw ON tw."userId" = u.id
         LEFT JOIN "Subscription" s ON s."userId" = u.id AND s.status = 'active'
@@ -157,10 +171,7 @@ export async function getClientUsers(
         }
     } catch (error) {
         console.error('[CLIENT_USERS] Error:', error)
-        return {
-            data: [],
-            meta: { page, limit, total: 0, totalPages: 0 },
-        }
+        return { data: [], meta: { page, limit, total: 0, totalPages: 0 } }
     }
 }
 
@@ -175,8 +186,13 @@ export async function getClientUserById(id: string): Promise<ClientUser | null> 
         u."emailVerified",
         u."createdAt",
         u."storageUsed",
-        1024 * 1024 * 512 AS "storageLimit",
-        COUNT(tw.id)::int AS "techWatchCount"
+        u."isPremiumLifetime",
+        COUNT(tw.id)::int AS "techWatchCount",
+        536870912 AS "storageLimit",
+        NULL AS "subscriptionStatus",
+        NULL AS "currentPeriodEnd",
+        false AS "cancelAtPeriodEnd",
+        NULL AS "planName"
       FROM "user" u
       LEFT JOIN "TechWatch" tw ON tw."userId" = u.id
       WHERE u.id = ${id} AND u.role = 'USER'
@@ -186,5 +202,32 @@ export async function getClientUserById(id: string): Promise<ClientUser | null> 
     } catch (error) {
         console.error('[CLIENT_USERS] GetById error:', error)
         return null
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// isPremiumLifetime toggle
+// ─────────────────────────────────────────────────────────────
+
+export async function togglePremiumLifetime(
+    userId: string,
+    value: boolean
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        await requirePermission('EDIT_USERS')
+
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+        if (!user || user.role !== 'USER') {
+            return { success: false, error: 'Utilisateur introuvable ou non-client' }
+        }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { isPremiumLifetime: value } as any, // Prisma will regenerate after db push
+        })
+        return { success: true }
+    } catch (error) {
+        console.error('[CLIENT_USERS] togglePremiumLifetime error:', error)
+        return { success: false, error: 'Impossible de modifier le statut Premium Lifetime' }
     }
 }

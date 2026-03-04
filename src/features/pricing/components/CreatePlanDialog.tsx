@@ -2,12 +2,37 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, CreditCard, Save, X, LayoutDashboard, BrainCircuit, HardDrive, GraduationCap, Edit, ChevronDown } from 'lucide-react'
+import { Plus, CreditCard, Save, X, LayoutDashboard, BrainCircuit, HardDrive, GraduationCap, Edit, ChevronDown, Rocket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useT } from '@/lib/i18n/locale-context'
+import { createPlan, updatePlan, type PlanFeatures, type PlanData } from '@/features/pricing/actions/pricing.actions'
 
-export function CreatePlanDialog({ initialData }: CreatePlanDialogProps) {
+interface CreatePlanDialogProps {
+    initialData?: any
+    triggerLabel?: string
+    triggerVariant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
+    defaultPrice?: number
+}
+
+const DEFAULT_FEATURES: PlanFeatures = {
+    techWatches: 3,
+    notes: 50,
+    storage: 536870912, // 512 MB par défaut pour le gratuit
+    companion: false,
+    courses: 1,
+    interviews: false,
+    aiTools: false,
+    mindmaps: false,
+    roadmap: false,
+    comparisons: false,
+    chatHistory: false,
+    articles: 100,
+    tasks: 100,
+    resources: 100,
+}
+
+export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "default", defaultPrice }: CreatePlanDialogProps) {
     const t = useT()
     const [isOpen, setIsOpen] = useState(false)
     const [pending, startTransition] = useTransition()
@@ -16,7 +41,7 @@ export function CreatePlanDialog({ initialData }: CreatePlanDialogProps) {
     const [formData, setFormData] = useState<PlanData>({
         name: initialData?.name || '',
         slug: initialData?.slug || '',
-        price: initialData?.price || 0,
+        price: initialData?.price ?? (defaultPrice ?? 0),
         interval: initialData?.interval || 'month',
         isActive: initialData?.isActive ?? true,
         sortOrder: initialData?.sortOrder || 0,
@@ -32,7 +57,7 @@ export function CreatePlanDialog({ initialData }: CreatePlanDialogProps) {
             setFormData({
                 name: initialData.name || '',
                 slug: initialData.slug || '',
-                price: initialData.price || 0,
+                price: initialData.price ?? 0,
                 interval: initialData.interval || 'month',
                 isActive: initialData.isActive ?? true,
                 sortOrder: initialData.sortOrder || 0,
@@ -45,7 +70,7 @@ export function CreatePlanDialog({ initialData }: CreatePlanDialogProps) {
             setFormData({
                 name: '',
                 slug: '',
-                price: 0,
+                price: defaultPrice ?? 0,
                 interval: 'month',
                 isActive: true,
                 sortOrder: 0,
@@ -65,7 +90,7 @@ export function CreatePlanDialog({ initialData }: CreatePlanDialogProps) {
             if (res.success) {
                 setIsOpen(false)
             } else {
-                setError(res.error || (locale === 'fr' ? 'Erreur inconnue' : 'Unknown error'))
+                setError(res.error || 'Une erreur est survenue')
             }
         })
     }
@@ -79,18 +104,10 @@ export function CreatePlanDialog({ initialData }: CreatePlanDialogProps) {
 
     // Si fermé, n'affiche que le bouton d'ouverture
     if (!isOpen) {
-        if (initialData) {
-            return (
-                <Button variant="outline" className="w-full mt-auto bg-[rgba(255,255,255,0.02)] border-[var(--chrome-border)] hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-colors" onClick={() => setIsOpen(true)}>
-                    <Edit className="w-4 h-4 mr-2" />
-                    {t.pricing.plans.edit}
-                </Button>
-            )
-        }
         return (
-            <Button onClick={() => setIsOpen(true)}>
+            <Button variant={triggerVariant as any} onClick={() => setIsOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
-                {t.pricing.plans.new}
+                {triggerLabel || t.pricing.plans.new}
             </Button>
         )
     }
@@ -244,6 +261,51 @@ export function CreatePlanDialog({ initialData }: CreatePlanDialogProps) {
                                         onChange={e => updateFeature('notes', parseInt(e.target.value))}
                                         className="settings-input"
                                     />
+                                    <p className="text-[10px] text-muted-foreground italic">-1 = illimité</p>
+                                </div>
+                                <div className="space-y-2 col-span-2">
+                                    <label className="text-sm font-medium">Articles autorisés</label>
+                                    <Input
+                                        required
+                                        type="number"
+                                        value={formData.features.articles || 0}
+                                        onChange={e => updateFeature('articles', parseInt(e.target.value))}
+                                        className="settings-input"
+                                    />
+                                </div>
+                                <div className="space-y-2 col-span-2">
+                                    <label className="text-sm font-medium">Tâches autorisées</label>
+                                    <Input
+                                        required
+                                        type="number"
+                                        value={formData.features.tasks || 0}
+                                        onChange={e => updateFeature('tasks', parseInt(e.target.value))}
+                                        className="settings-input"
+                                    />
+                                </div>
+                                <div className="space-y-2 col-span-2">
+                                    <label className="text-sm font-medium">Ressources autorisées</label>
+                                    <Input
+                                        required
+                                        type="number"
+                                        value={formData.features.resources || 0}
+                                        onChange={e => updateFeature('resources', parseInt(e.target.value))}
+                                        className="settings-input"
+                                    />
+                                </div>
+                                <div className="space-y-2 col-span-2 pt-2 border-t border-white/5">
+                                    <label className="text-sm font-medium flex items-center gap-2">
+                                        <GraduationCap className="w-4 h-4 text-primary" />
+                                        Nombre de cours autorisés
+                                    </label>
+                                    <Input
+                                        required
+                                        type="number"
+                                        value={formData.features.courses}
+                                        onChange={e => updateFeature('courses', parseInt(e.target.value))}
+                                        className="settings-input"
+                                    />
+                                    <p className="text-[10px] text-muted-foreground italic">Ex: 0 (aucun), 5 (limité), -1 (illimité)</p>
                                 </div>
                             </div>
                         </div>
@@ -273,31 +335,15 @@ export function CreatePlanDialog({ initialData }: CreatePlanDialogProps) {
                                     <input
                                         type="checkbox"
                                         className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                                        checked={!!formData.features.courses}
-                                        onChange={e => updateFeature('courses', e.target.checked)}
-                                    />
-                                    <div>
-                                        <div className="text-sm font-medium flex items-center gap-2">
-                                            <GraduationCap className="w-4 h-4 text-primary" />
-                                            {t.pricing.plans.dialog.courses}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground mt-1">{t.pricing.plans.dialog.coursesDesc}</div>
-                                    </div>
-                                </label>
-
-                                <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
-                                    <input
-                                        type="checkbox"
-                                        className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
                                         checked={!!formData.features.interviews}
                                         onChange={e => updateFeature('interviews', e.target.checked)}
                                     />
                                     <div>
                                         <div className="text-sm font-medium flex items-center gap-2">
-                                            <BrainCircuit className="w-4 h-4 text-emerald-500" />
-                                            {t.pricing.plans.dialog.interviews}
+                                            <BrainCircuit className="w-4 h-4 text-blue-400" />
+                                            Simulateur & Quiz
                                         </div>
-                                        <div className="text-xs text-muted-foreground mt-1">{t.pricing.plans.dialog.interviewsDesc}</div>
+                                        <div className="text-xs text-muted-foreground mt-1">Autorise l'accès aux quiz interactifs et simulations d'entretiens.</div>
                                     </div>
                                 </label>
 
@@ -305,8 +351,72 @@ export function CreatePlanDialog({ initialData }: CreatePlanDialogProps) {
                                     <input
                                         type="checkbox"
                                         className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                        checked={!!formData.features.mindmaps}
+                                        onChange={e => updateFeature('mindmaps', e.target.checked)}
+                                    />
+                                    <div>
+                                        <div className="text-sm font-medium flex items-center gap-2">
+                                            <BrainCircuit className="w-4 h-4 text-emerald-500" />
+                                            Génération de Mindmaps
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-1">Autorise l'utilisateur à créer des cartes mentales IA.</div>
+                                    </div>
+                                </label>
+
+                                <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                        checked={!!formData.features.roadmap}
+                                        onChange={e => updateFeature('roadmap', e.target.checked)}
+                                    />
+                                    <div>
+                                        <div className="text-sm font-medium flex items-center gap-2">
+                                            <Rocket className="w-4 h-4 text-blue-500" />
+                                            Génération de Roadmaps
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-1">Autorise l'utilisateur à générer des parcours d'apprentissage IA.</div>
+                                    </div>
+                                </label>
+
+                                <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                        checked={!!formData.features.comparisons}
+                                        onChange={e => updateFeature('comparisons', e.target.checked)}
+                                    />
+                                    <div>
+                                        <div className="text-sm font-medium flex items-center gap-2">
+                                            <LayoutDashboard className="w-4 h-4 text-amber-500" />
+                                            Tableaux Comparatifs
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-1">Autorise la création de comparaisons IA entre technologies.</div>
+                                    </div>
+                                </label>
+
+                                <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                        checked={!!formData.features.chatHistory}
+                                        onChange={e => updateFeature('chatHistory', e.target.checked)}
+                                    />
+                                    <div>
+                                        <div className="text-sm font-medium flex items-center gap-2">
+                                            <Plus className="w-4 h-4 text-cyan-500" />
+                                            Historique des discussions IA
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-1">Sauvegarde les conversations avec l'assistant IA.</div>
+                                    </div>
+                                </label>
+
+                                <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 opacity-50 grayscale cursor-not-allowed">
+                                    <input
+                                        type="checkbox"
+                                        disabled
+                                        className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
                                         checked={!!formData.features.aiTools}
-                                        onChange={e => updateFeature('aiTools', e.target.checked)}
                                     />
                                     <div>
                                         <div className="text-sm font-bold">{t.pricing.plans.dialog.aiTools}</div>
