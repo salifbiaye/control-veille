@@ -33,9 +33,9 @@ export default async function AnalyticsPage() {
             color: "#3B82F6", // blue
         },
         {
-            title: "Revenu Cumulé (MRR)",
+            title: "MRR (Net)",
             value: formatCurrency(stats.totalRevenue),
-            change: "Depuis lancement",
+            change: "Revenu Mensuel Récurrent",
             icon: CreditCard,
             color: "#10B981", // green
         },
@@ -67,22 +67,45 @@ export default async function AnalyticsPage() {
                 {/* KPI Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
                     {kpiCards.map((stat, i) => (
-                        <div key={i} className="stat-card group animate-scale-in" style={{ animationDelay: `${i * 100}ms` }}>
+                        <div
+                            key={i}
+                            className="relative overflow-hidden p-5 rounded-2xl border transition-all hover:-translate-y-1 flex flex-col gap-4 animate-scale-in"
+                            style={{
+                                animationDelay: `${i * 100}ms`,
+                                background: 'var(--glass-bg)',
+                                borderColor: 'var(--glass-border)',
+                            }}
+                        >
+                            {/* Color Glow */}
                             <div
-                                className="absolute -top-[100px] -right-[100px] w-[200px] h-[200px] rounded-full blur-[80px] pointer-events-none transition-opacity opacity-20 group-hover:opacity-40"
+                                className="absolute -top-[100px] -right-[100px] w-[200px] h-[200px] rounded-full blur-[80px] pointer-events-none opacity-20"
                                 style={{ background: stat.color }}
                             />
+
                             <div className="flex items-start justify-between relative z-10">
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                                    <p className="text-3xl font-extrabold text-foreground mt-1.5">{stat.value}</p>
-                                    <p className="text-xs text-muted-foreground mt-2 font-medium" style={{ color: stat.color }}>
+                                <div
+                                    className="w-10 h-10 rounded-xl flex items-center justify-center border transition-transform group-hover:rotate-6 shadow-sm"
+                                    style={{
+                                        background: `color-mix(in srgb, ${stat.color} 10%, transparent)`,
+                                        borderColor: `color-mix(in srgb, ${stat.color} 20%, transparent)`
+                                    }}
+                                >
+                                    <stat.icon className="w-5 h-5" style={{ color: stat.color }} />
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-white/5 border border-white/5" style={{ color: stat.color }}>
+                                    Analytics
+                                </span>
+                            </div>
+
+                            <div className="relative z-10">
+                                <p className="text-4xl font-black tabular-nums tracking-tight" style={{ color: stat.color }}>
+                                    {stat.value}
+                                </p>
+                                <div className="mt-1 flex flex-col">
+                                    <p className="text-sm font-bold text-white tracking-wide">{stat.title}</p>
+                                    <p className="text-xs text-muted-foreground font-medium mt-0.5 opacity-80">
                                         {stat.change}
                                     </p>
-                                </div>
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center border transition-transform group-hover:rotate-6"
-                                    style={{ background: `color-mix(in srgb, ${stat.color} 8%, transparent)`, borderColor: `color-mix(in srgb, ${stat.color} 19%, transparent)` }}>
-                                    <stat.icon className="w-5 h-5" style={{ color: stat.color }} />
                                 </div>
                             </div>
                         </div>
@@ -146,7 +169,7 @@ export default async function AnalyticsPage() {
                                                             {sub.plan?.name || '?'}
                                                         </span>
                                                         <span className="text-[10px] text-muted-foreground mt-1">
-                                                            +{formatCurrency(sub.plan?.price || 0)}
+                                                            +{formatCurrency(sub.plan?.monthlyPrice || 0)}
                                                         </span>
                                                     </div>
                                                 </td>

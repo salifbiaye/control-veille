@@ -26,32 +26,43 @@ export function UsersGrowthChart({ data }: UsersGrowthChartProps) {
                                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--glass-border)" vertical={false} opacity={0.3} />
                             <XAxis
                                 dataKey="date"
-                                stroke="rgba(255,255,255,0.4)"
+                                stroke="var(--txt-sub)"
                                 fontSize={10}
                                 tickLine={false}
                                 axisLine={false}
                                 minTickGap={20}
+                                dy={10}
                             />
                             <YAxis
-                                stroke="rgba(255,255,255,0.4)"
+                                stroke="var(--txt-sub)"
                                 fontSize={10}
                                 tickLine={false}
                                 axisLine={false}
                                 allowDecimals={false}
                             />
                             <Tooltip
-                                wrapperClassName="recharts-tooltip-custom"
-                                contentStyle={{ background: 'transparent', border: 'none', padding: 0 }}
-                                itemStyle={{ color: '#93c5fd' }}
+                                content={({ active, payload, label }) => {
+                                    if (active && payload && payload.length) {
+                                        return (
+                                            <div className="bg-[var(--card-bg)] border border-[var(--glass-border)] p-3 rounded-xl shadow-2xl backdrop-blur-md">
+                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">{label}</p>
+                                                <p className="text-sm font-black text-white">
+                                                    {payload[0].value} utilisateurs
+                                                </p>
+                                            </div>
+                                        )
+                                    }
+                                    return null
+                                }}
                             />
                             <Area
                                 type="monotone"
                                 dataKey="users"
                                 stroke="#3b82f6"
-                                strokeWidth={2}
+                                strokeWidth={3}
                                 fillOpacity={1}
                                 fill="url(#colorUsers)"
                             />

@@ -26,33 +26,43 @@ export function RevenueChart({ data }: RevenueChartProps) {
                                     <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.1} />
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--glass-border)" vertical={false} opacity={0.3} />
                             <XAxis
                                 dataKey="name"
-                                stroke="rgba(255,255,255,0.4)"
-                                fontSize={12}
+                                stroke="var(--txt-sub)"
+                                fontSize={11}
                                 tickLine={false}
                                 axisLine={false}
+                                dy={10}
                             />
                             <YAxis
-                                stroke="rgba(255,255,255,0.4)"
-                                fontSize={12}
+                                stroke="var(--txt-sub)"
+                                fontSize={11}
                                 tickLine={false}
                                 axisLine={false}
                                 tickFormatter={(value) => `${value}€`}
                             />
                             <Tooltip
-                                cursor={{ fill: 'rgba(255,255,255,0.02)' }}
-                                wrapperClassName="recharts-tooltip-custom"
-                                contentStyle={{ background: 'transparent', border: 'none', padding: 0 }}
-                                itemStyle={{ color: '#c4b5fd' }}
-                                formatter={(value: any) => [`${value.toFixed(2)}€`, 'Revenus'] as any}
+                                cursor={{ fill: 'var(--glass-border)', opacity: 0.1 }}
+                                content={({ active, payload, label }) => {
+                                    if (active && payload && payload.length) {
+                                        return (
+                                            <div className="bg-[var(--card-bg)] border border-[var(--glass-border)] p-3 rounded-xl shadow-2xl backdrop-blur-md">
+                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">{label}</p>
+                                                <p className="text-sm font-black text-white">
+                                                    {payload[0].value?.toLocaleString()}€
+                                                </p>
+                                            </div>
+                                        )
+                                    }
+                                    return null
+                                }}
                             />
                             <Bar
                                 dataKey="total"
                                 fill="url(#colorRevenue)"
-                                radius={[4, 4, 0, 0]}
-                                barSize={40}
+                                radius={[6, 6, 0, 0]}
+                                barSize={45}
                             />
                         </BarChart>
                     </ResponsiveContainer>

@@ -17,8 +17,8 @@ export interface PlanFeatures {
 export type PlanData = {
     name: string
     slug: string
-    price: number
-    interval: string
+    monthlyPrice: number
+    yearlyPrice: number
     features: PlanFeatures
     isActive: boolean
     sortOrder: number
@@ -71,10 +71,13 @@ export async function getPlans() {
 export async function createPlan(data: PlanData) {
     try {
         await requirePermission('EDIT_PLANS')
+        const { monthlyPrice, yearlyPrice, features, ...rest } = data
         const plan = await prisma.plan.create({
             data: {
-                ...data,
-                features: data.features as any, // Prisma Json type
+                ...rest,
+                monthlyPrice,
+                yearlyPrice,
+                features: features as any,
             }
         })
         revalidatePath('/dashboard/pricing')
@@ -88,11 +91,14 @@ export async function createPlan(data: PlanData) {
 export async function updatePlan(id: string, data: Partial<PlanData>) {
     try {
         await requirePermission('EDIT_PLANS')
+        const { monthlyPrice, yearlyPrice, features, ...rest } = data
         const plan = await prisma.plan.update({
             where: { id },
             data: {
-                ...data,
-                features: data.features ? (data.features as any) : undefined,
+                ...rest,
+                monthlyPrice,
+                yearlyPrice,
+                features: features ? (features as any) : undefined,
             }
         })
         revalidatePath('/dashboard/pricing')
@@ -119,55 +125,99 @@ export async function deletePlan(id: string) {
 // Promotions Actions
 // ─────────────────────────────────────────────────────────────
 
+import { stripe } from '@/lib/stripe'
+
 export async function getPromotions() {
     try {
         await requirePermission('VIEW_PROMOTIONS')
-        const promos = await prisma.promotion.findMany({
-            orderBy: { createdAt: 'desc' },
-            include: { plan: { select: { name: true } } }
+
+        // On récupère les codes promos depuis Stripe (qui contiennent le coupon lié)
+        const stripePromos = await stripe.promotionCodes.list({
+            active: true,
+            limit: 100,
+            expand: ['data.coupon']
         })
+
+        const promos = stripePromos.data.map(promo => {
+            const coupon = (promo as any).coupon as import('stripe').Stripe.Coupon
+            return {
+                id: promo.id,
+                code: promo.code,
+                discountType: coupon.percent_off ? 'percentage' : 'fixed',
+                discountValue: coupon.percent_off ? coupon.percent_off : (coupon.amount_off ? coupon.amount_off : 0),
+                maxUses: promo.max_redemptions || coupon.max_redemptions || null,
+                usedCount: promo.times_redeemed,
+                expiresAt: promo.expires_at ? new Date(promo.expires_at * 1000) : (coupon.redeem_by ? new Date(coupon.redeem_by * 1000) : null),
+                isActive: promo.active,
+                // On n'a pas forcément le lien direct avec le plan local, sauf s'il est contenu dans les metadata du coupon
+                plan: null
+            }
+        })
+
         return { success: true, promos }
     } catch (error) {
         console.error('[PRICING] getPromotions error:', error)
-        return { success: false, promos: [], error: 'Erreur lors de la récupération des promos' }
+        return { success: false, promos: [], error: 'Erreur lors de la récupération des promos depuis Stripe' }
     }
 }
 
-export async function createPromotion(data: PromotionData) {
+export async function createPromotion(data: {
+    code: string,
+    discountType: 'percentage' | 'fixed',
+    discountValue: number,
+    maxUses?: number | null,
+    expiresAt?: Date | null
+}) {
     try {
         await requirePermission('EDIT_PROMOTIONS')
-        const promo = await prisma.promotion.create({ data })
-        revalidatePath('/dashboard/pricing')
-        return { success: true, promo }
-    } catch (error) {
-        console.error('[PRICING] createPromotion error:', error)
-        return { success: false, error: 'Le code promo existe peut-être déjà' }
-    }
-}
 
-export async function togglePromotion(id: string, isActive: boolean) {
-    try {
-        await requirePermission('EDIT_PROMOTIONS')
-        await prisma.promotion.update({
-            where: { id },
-            data: { isActive },
-        })
+        // 1. Create Coupon first
+        const couponData: import('stripe').Stripe.CouponCreateParams = {
+            name: `Promo: ${data.code}`,
+            duration: 'forever',
+        }
+
+        if (data.discountType === 'percentage') {
+            couponData.percent_off = data.discountValue
+        } else {
+            couponData.amount_off = data.discountValue
+            couponData.currency = 'eur'
+        }
+
+        if (data.maxUses) couponData.max_redemptions = data.maxUses
+        if (data.expiresAt) couponData.redeem_by = Math.floor(data.expiresAt.getTime() / 1000)
+
+        const coupon = await stripe.coupons.create(couponData)
+
+        // 2. Create Promotion Code linked to Coupon
+        await stripe.promotionCodes.create({
+            coupon: coupon.id,
+            code: data.code,
+            active: true,
+            max_redemptions: data.maxUses ?? undefined,
+            expires_at: data.expiresAt ? Math.floor(data.expiresAt.getTime() / 1000) : undefined,
+        } as any) // Cast to any because of local TS mismatch on coupon property name in some versions
+
         revalidatePath('/dashboard/pricing')
         return { success: true }
-    } catch (error) {
-        console.error('[PRICING] togglePromotion error:', error)
-        return { success: false, error: 'Impossible de modifier le statut de la promo' }
+    } catch (error: any) {
+        console.error('[PRICING] createPromotion error:', error)
+        return { success: false, error: error.message || 'Erreur lors de la création de la promotion' }
     }
 }
 
-export async function deletePromotion(id: string) {
+export async function deletePromotion(promoCodeId: string) {
     try {
         await requirePermission('DELETE_PROMOTIONS')
-        await prisma.promotion.delete({ where: { id } })
+
+        // Stripe promotion codes cannot be "deleted", only marked inactive
+        await stripe.promotionCodes.update(promoCodeId, { active: false })
+
         revalidatePath('/dashboard/pricing')
         return { success: true }
-    } catch (error) {
+    } catch (error: any) {
         console.error('[PRICING] deletePromotion error:', error)
-        return { success: false, error: 'Impossible de supprimer cette promo' }
+        return { success: false, error: error.message || 'Erreur lors de la désactivation de la promotion' }
     }
 }
+

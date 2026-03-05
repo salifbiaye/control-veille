@@ -25,6 +25,7 @@ const navigation = [
   { name: 'Souscriptions', href: '/dashboard/subscriptions', icon: Receipt, permission: 'VIEW_ANALYTICS' as const },
   { name: 'TechWatch', href: '/dashboard/techwatches', icon: Database, permission: 'VIEW_TECHWATCHES' as const },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, permission: 'VIEW_ANALYTICS' as const },
+  { name: 'Paramètres', href: '/dashboard/settings', icon: Settings, permission: 'VIEW_SETTINGS' as const },
 ]
 
 interface SidebarProps {

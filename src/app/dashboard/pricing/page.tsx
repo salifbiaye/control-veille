@@ -3,7 +3,6 @@ import { Badge } from '@/components/ui/badge'
 import { getPlans, getPromotions } from '@/features/pricing/actions/pricing.actions'
 import { CreatePlanDialog } from '@/features/pricing/components/CreatePlanDialog'
 import { DeletePlanButton } from '@/features/pricing/components/DeletePlanButton'
-import { CreatePromoDialog } from '@/features/pricing/components/CreatePromoDialog'
 import { PageHero } from '@/components/ui/PageHero'
 import { Button } from '@/components/ui/button'
 import { cookies } from 'next/headers'
@@ -80,9 +79,9 @@ export default async function PricingPage() {
             <div className="flex items-center gap-3">
               {canEditPlans && (
                 <>
-                  {plans.find((p: any) => p.price === 0) ? (
+                  {plans.find((p: any) => p.monthlyPrice === 0 && p.yearlyPrice === 0) ? (
                     <CreatePlanDialog
-                      initialData={plans.find((p: any) => p.price === 0) as any}
+                      initialData={plans.find((p: any) => p.monthlyPrice === 0 && p.yearlyPrice === 0) as any}
                       triggerLabel="Configurer le Pack Gratuit"
                       triggerVariant="outline"
                     />
@@ -90,7 +89,8 @@ export default async function PricingPage() {
                     <CreatePlanDialog
                       triggerLabel="Créer Pack Gratuit"
                       triggerVariant="outline"
-                      defaultPrice={0}
+                      defaultMonthlyPrice={0}
+                      defaultYearlyPrice={0}
                     />
                   )}
                 </>
@@ -102,7 +102,8 @@ export default async function PricingPage() {
             {plans.map((plan: any, idx: number) => {
               const features = plan.features as PlanFeatures
               const isPopular = !!features.isPopular
-              const priceLabel = formatPrice(plan.price)
+              const priceLabel = formatPrice(plan.monthlyPrice)
+              const yearlyPriceLabel = formatPrice(plan.yearlyPrice)
 
               return (
                 <div key={plan.id} className="group relative flex flex-col p-6 rounded-2xl bg-[var(--card-bg)] border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
@@ -122,7 +123,7 @@ export default async function PricingPage() {
                       <h3 className="text-xl font-bold text-[var(--page-fg)]">{plan.name}</h3>
                       <div className="flex items-baseline gap-1 mt-2">
                         <span className="text-3xl font-extrabold tracking-tight text-white">{priceLabel}</span>
-                        {plan.price > 0 && <span className="text-sm font-medium text-muted-foreground">/{plan.interval === 'month' ? 'mois' : 'an'}</span>}
+                        {plan.monthlyPrice > 0 && <span className="text-sm font-medium text-muted-foreground">/mois | {yearlyPriceLabel}/an</span>}
                       </div>
                     </div>
 
@@ -201,17 +202,17 @@ export default async function PricingPage() {
 
                   {canEditPlans && (
                     <div className="flex items-center gap-2 mt-auto pt-4 border-t border-[var(--glass-border)]">
-                      {!plan.stripePriceId && (
+                      {(!plan.stripeMonthlyPriceId && !plan.stripeYearlyPriceId) && (
                         <div className="flex-1">
                           <CreatePlanDialog
                             initialData={plan as any}
-                            triggerLabel={plan.price === 0 ? "Configurer le Pack Gratuit" : "Modifier le Plan"}
+                            triggerLabel={plan.monthlyPrice === 0 ? "Configurer le Pack Gratuit" : "Modifier le Plan"}
                             triggerVariant="outline"
                           />
                         </div>
                       )}
 
-                      {!plan.stripePriceId && (
+                      {(!plan.stripeMonthlyPriceId && !plan.stripeYearlyPriceId) && (
                         <DeletePlanButton
                           planId={plan.id}
                           planName={plan.name}
@@ -240,7 +241,14 @@ export default async function PricingPage() {
               </h2>
               <p className="text-sm text-muted-foreground mt-1">Créez des remises pour vos campagnes de conversion.</p>
             </div>
-            {canEditPromos && <CreatePromoDialog plans={plans.map((p: any) => ({ id: p.id, name: p.name }))} />}
+            {canEditPromos && (
+              <a href="https://dashboard.stripe.com/coupons" target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" className="gap-2">
+                  <Tag className="w-4 h-4" />
+                  Gérer sur Stripe
+                </Button>
+              </a>
+            )}
           </div>
 
           <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--card-bg)] shadow-sm overflow-hidden">
@@ -309,11 +317,6 @@ export default async function PricingPage() {
                         </td>
                         <td className="text-right">
                           <div className="flex justify-end gap-2">
-                            {canEditPromos && (
-                              <Button size="icon" variant="outline" className="h-8 w-8 bg-transparent border-transparent text-muted-foreground hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            )}
                             <Badge variant="outline" className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${promo.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
                               {promo.isActive ? 'ACTIF' : 'INACTIF'}
                             </Badge>

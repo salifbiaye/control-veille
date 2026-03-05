@@ -91,7 +91,8 @@ function AdminUsersTab({ initial }: { initial: AdminUser[] }) {
     const t = useT()
     const [users, setUsers] = useState(initial)
     const [pending, startTransition] = useTransition()
-    const [searchTerm, setSearchTerm] = useState('')
+    const [globalFilter, setGlobalFilter] = useState('')
+    const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }])
 
     // Confirm modal state
     const [confirmModal, setConfirmModal] = useState<{
@@ -118,7 +119,6 @@ function AdminUsersTab({ initial }: { initial: AdminUser[] }) {
 
     function requestRoleChange(id: string, role: typeof ROLES[number]) {
         if (users.find(u => u.id === id)?.role === 'SUPER_ADMIN') return
-        // Only ask confirmation when demoting
         const currentRole = users.find(u => u.id === id)?.role
         const demotion = ROLES.indexOf(role) > ROLES.indexOf(currentRole as typeof ROLES[number])
         if (demotion) {
@@ -141,16 +141,132 @@ function AdminUsersTab({ initial }: { initial: AdminUser[] }) {
         })
     }
 
-    const filteredUsers = useMemo(() => {
-        if (!searchTerm) return users
-        return users.filter(u =>
-            (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (u.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-        )
-    }, [users, searchTerm])
+    const columns = useMemo<ColumnDef<AdminUser>[]>(() => [
+        {
+            accessorFn: row => `${row.name} ${row.email}`,
+            id: 'member',
+            header: ({ column }) => (
+                <Button
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    className="px-0 font-medium hover:bg-transparent -ml-2 h-auto text-[var(--page-fg)]"
+                >
+                    {t.users.table.member}
+                    <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+            ),
+            cell: ({ row }) => {
+                const user = row.original
+                const initial = (user.name ?? user.email).charAt(0).toUpperCase()
+                const bgColor = getColorForInitial(initial)
+                const isSuperAdmin = user.role === 'SUPER_ADMIN'
+                return (
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <Avatar className="h-9 w-9 border border-[var(--glass-border)] rounded-xl shadow-sm">
+                                <AvatarFallback className="text-sm font-bold text-white rounded-xl" style={{ backgroundColor: bgColor }}>
+                                    {initial}
+                                </AvatarFallback>
+                            </Avatar>
+                            {isSuperAdmin && (
+                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                                    <Crown className="w-2.5 h-2.5 text-white" />
+                                </span>
+                            )}
+                        </div>
+                        <div>
+                            <div className="font-medium text-[var(--page-fg)]">{user.name || '—'}</div>
+                            <div className="text-xs text-muted-foreground">{user.email}</div>
+                        </div>
+                    </div>
+                )
+            }
+        },
+        {
+            accessorKey: 'role',
+            header: () => <div>{t.users.table.role}</div>,
+            cell: ({ row }) => {
+                const user = row.original
+                const isSuperAdmin = user.role === 'SUPER_ADMIN'
+                return isSuperAdmin ? (
+                    <div className={`inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-3 py-1 border ${roleBadgeVariant['SUPER_ADMIN']}`}>
+                        <Lock className="w-3 h-3" />
+                        {getRoleLabel('SUPER_ADMIN', t)}
+                    </div>
+                ) : (
+                    <select
+                        value={user.role}
+                        disabled={pending}
+                        onChange={e => requestRoleChange(user.id, e.target.value as typeof ROLES[number])}
+                        className={`text-xs font-semibold rounded-full px-3 py-1 border transition-colors outline-none cursor-pointer appearance-none ${roleBadgeVariant[user.role]}`}
+                    >
+                        {ROLES.filter(r => r !== 'SUPER_ADMIN').map(r => (
+                            <option key={r} value={r} className="bg-[var(--card-bg)] text-[var(--page-fg)]">
+                                {getRoleLabel(r, t)}
+                            </option>
+                        ))}
+                    </select>
+                )
+            }
+        },
+        {
+            accessorKey: 'createdAt',
+            header: ({ column }) => (
+                <Button
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    className="px-0 font-medium hover:bg-transparent h-auto text-[var(--page-fg)]"
+                >
+                    {t.users.table.added}
+                    <ArrowUpDown className="ml-2 h-3 w-3" />
+                </Button>
+            ),
+            cell: ({ row }) => (
+                <span className="text-sm text-muted-foreground">
+                    {new Date(row.original.createdAt).toLocaleDateString('fr-FR')}
+                </span>
+            )
+        },
+        {
+            id: 'actions',
+            header: () => <div className="text-right">Actions</div>,
+            cell: ({ row }) => {
+                const user = row.original
+                const isSuperAdmin = user.role === 'SUPER_ADMIN'
+                return (
+                    <div className="text-right">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={pending || user.role === 'READ_ONLY' || isSuperAdmin}
+                            onClick={() => requestRevoke(user.id)}
+                            className="h-8 text-xs bg-[rgba(239,68,68,0.05)] border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300 transition-colors shadow-none disabled:opacity-30"
+                            title={isSuperAdmin ? 'Les Super Admins ne peuvent pas être révoqués' : ''}
+                        >
+                            {isSuperAdmin ? <Lock className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5 mr-1.5" />}
+                            {!isSuperAdmin && t.users.actions.revoke}
+                        </Button>
+                    </div>
+                )
+            }
+        }
+    ], [t, pending])
+
+    const table = useReactTable({
+        data: users,
+        columns,
+        getCoreRowModel: getCoreRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        state: { globalFilter, sorting },
+        onGlobalFilterChange: setGlobalFilter,
+        onSortingChange: setSorting,
+        initialState: { pagination: { pageSize: 10 } }
+    })
 
     return (
-        <div className="space-y-4 animate-slide-up-fade">
+        <div className="space-y-6 animate-slide-up-fade">
             <ConfirmModal
                 isOpen={confirmModal.isOpen}
                 variant="warning"
@@ -166,15 +282,16 @@ function AdminUsersTab({ initial }: { initial: AdminUser[] }) {
                 isPending={pending}
             />
 
-            <div className="flex items-center gap-4 border-b border-[var(--glass-border)] pb-4">
-                <div className="relative w-full max-w-sm group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                {/* 1. Global Search */}
+                <div className="relative flex-1 group max-w-md">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary pointer-events-none" />
                     <input
                         type="text"
                         placeholder={t.users.search.admin}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="input-premium pl-12 w-full"
+                        value={globalFilter}
+                        onChange={(e) => setGlobalFilter(e.target.value)}
+                        className="w-full h-11 rounded-xl bg-[rgba(255,255,255,0.01)] border border-[var(--glass-border)] px-4 pl-12 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all font-medium"
                     />
                 </div>
             </div>
@@ -183,95 +300,79 @@ function AdminUsersTab({ initial }: { initial: AdminUser[] }) {
                 <div className="overflow-x-auto">
                     <table className="premium-table">
                         <thead>
-                            <tr>
-                                <th className="w-[40%]">{t.users.table.member}</th>
-                                <th>{t.users.table.role}</th>
-                                <th>{t.users.table.added}</th>
-                                <th className="text-right">Actions</th>
-                            </tr>
+                            {table.getHeaderGroups().map(headerGroup => (
+                                <tr key={headerGroup.id}>
+                                    {headerGroup.headers.map(header => (
+                                        <th key={header.id} className={header.column.id === 'actions' ? 'text-right' : ''}>
+                                            {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                                        </th>
+                                    ))}
+                                </tr>
+                            ))}
                         </thead>
                         <tbody>
-                            {filteredUsers.length === 0 ? (
+                            {table.getRowModel().rows?.length ? (
+                                table.getRowModel().rows.map(row => (
+                                    <tr key={row.id} className="group hover:bg-[rgba(255,255,255,0.01)] transition-colors">
+                                        {row.getVisibleCells().map(cell => (
+                                            <td key={cell.id}>
+                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))
+                            ) : (
                                 <tr>
-                                    <td colSpan={4} className="text-center py-12 text-muted-foreground italic">
+                                    <td colSpan={columns.length} className="text-center py-12 text-muted-foreground italic">
                                         {t.users.table.emptyAdmin}
                                     </td>
                                 </tr>
-                            ) : filteredUsers.map((row) => {
-                                const initial = (row.name ?? row.email).charAt(0).toUpperCase()
-                                const bgColor = getColorForInitial(initial)
-                                const isSuperAdmin = row.role === 'SUPER_ADMIN'
-                                return (
-                                    <tr key={row.id} className="group">
-                                        <td>
-                                            <div className="flex items-center gap-3">
-                                                <div className="relative">
-                                                    <Avatar className="h-9 w-9 border border-[var(--glass-border)] rounded-xl shadow-sm">
-                                                        <AvatarFallback className="text-sm font-bold text-white rounded-xl" style={{ backgroundColor: bgColor }}>
-                                                            {initial}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    {isSuperAdmin && (
-                                                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                                                            <Crown className="w-2.5 h-2.5 text-white" />
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <div className="font-medium text-[var(--page-fg)]">{row.name || '—'}</div>
-                                                    <div className="text-xs text-muted-foreground">{row.email}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            {isSuperAdmin ? (
-                                                <div className={`inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-3 py-1 border ${roleBadgeVariant['SUPER_ADMIN']}`}>
-                                                    <Lock className="w-3 h-3" />
-                                                    {getRoleLabel('SUPER_ADMIN', t)}
-                                                </div>
-                                            ) : (
-                                                <select
-                                                    value={row.role}
-                                                    disabled={pending || isSuperAdmin}
-                                                    onChange={e => requestRoleChange(row.id, e.target.value as typeof ROLES[number])}
-                                                    className={`text-xs font-semibold rounded-full px-3 py-1 border transition-colors outline-none cursor-pointer appearance-none ${roleBadgeVariant[row.role]}`}
-                                                >
-                                                    {ROLES.filter(r => r !== 'SUPER_ADMIN').map(r => (
-                                                        <option key={r} value={r} className="bg-[var(--card-bg)] text-[var(--page-fg)]">
-                                                            {getRoleLabel(r, t)}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            )}
-                                        </td>
-                                        <td>
-                                            <span className="text-sm text-muted-foreground">
-                                                {new Date(row.createdAt).toLocaleDateString('fr-FR')}
-                                            </span>
-                                        </td>
-                                        <td className="text-right">
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                disabled={pending || row.role === 'READ_ONLY' || isSuperAdmin}
-                                                onClick={() => requestRevoke(row.id)}
-                                                className="h-8 text-xs bg-[rgba(239,68,68,0.05)] border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300 transition-colors shadow-none disabled:opacity-30"
-                                                title={isSuperAdmin ? 'Les Super Admins ne peuvent pas être révoqués' : ''}
-                                            >
-                                                {isSuperAdmin ? <Lock className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5 mr-1.5" />}
-                                                {!isSuperAdmin && t.users.actions.revoke}
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                )
-                            })}
+                            )}
                         </tbody>
                     </table>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-4 border-t border-[var(--glass-border)] bg-[rgba(255,255,255,0.01)] gap-4">
+                    <div className="text-sm text-muted-foreground font-medium flex items-center gap-4">
+                        <span className="flex items-center gap-1.5">
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            {table.getFilteredRowModel().rows.length} <span className="hidden sm:inline">admins trouvés</span>
+                        </span>
+                        {table.getPageCount() > 0 && (
+                            <span className="text-xs px-2 py-0.5 rounded-md bg-white/5 border border-white/5">
+                                Page {table.getState().pagination.pageIndex + 1} / {table.getPageCount() || 1}
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => table.previousPage()}
+                            disabled={!table.getCanPreviousPage()}
+                            className="h-8 px-3 gap-1.5 bg-[var(--card-bg)] border-[var(--chrome-border)] hover:bg-[var(--glass-elev)] text-[var(--page-fg)] disabled:opacity-20 text-xs transition-all"
+                        >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                            Précédent
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => table.nextPage()}
+                            disabled={!table.getCanNextPage()}
+                            className="h-8 px-3 gap-1.5 bg-[var(--card-bg)] border-[var(--chrome-border)] hover:bg-[var(--glass-elev)] text-[var(--page-fg)] disabled:opacity-20 text-xs transition-all"
+                        >
+                            Suivant
+                            <ChevronRight className="w-3.5 h-3.5" />
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>
     )
 }
+
 
 // ─────────────────────────────────────────────────────────────
 // Client Users Tab (TanStack Table)
@@ -285,14 +386,6 @@ function ClientUsersTab({ data }: { data: ClientUser[] }) {
     const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }])
     const [planFilter, setPlanFilter] = useState<'all' | 'free' | 'pro' | 'premium'>('all')
     const [pending, startTransition] = useTransition()
-    const [growthData, setGrowthData] = useState<any[]>([])
-
-    // Fetch growth data for chart
-    useEffect(() => {
-        getAnalyticsStats().then(stats => {
-            setGrowthData(stats.usersGrowth || [])
-        })
-    }, [])
 
     // Modals state
     const [actionModal, setActionModal] = useState<{
@@ -554,13 +647,6 @@ function ClientUsersTab({ data }: { data: ClientUser[] }) {
 
     return (
         <div className="space-y-6 animate-slide-up-fade">
-            {/* 1. Activity Chart */}
-            {growthData.length > 0 && (
-                <div className="mb-2">
-                    <UsersActivityChart data={growthData} />
-                </div>
-            )}
-
             <ConfirmModal
                 isOpen={actionModal.isOpen}
                 variant={actionModal.type === 'unban' ? 'warning' : 'danger'}
@@ -802,7 +888,15 @@ interface UsersClientProps {
 
 export function UsersClient({ adminUsers, clientUsers }: UsersClientProps) {
     const [tab, setTab] = useState<'clients' | 'admin'>('clients')
+    const [growthData, setGrowthData] = useState<any[]>([])
     const t = useT()
+
+    // Fetch unified growth data for chart
+    useEffect(() => {
+        getAnalyticsStats().then(stats => {
+            setGrowthData(stats.usersGrowth || [])
+        })
+    }, [])
 
     const tabs: { id: Tab; label: string; count: number; icon: React.ElementType }[] = [
         { id: 'clients', label: t.users.tabs.clients, count: clientUsers.length, icon: Users },
@@ -810,8 +904,17 @@ export function UsersClient({ adminUsers, clientUsers }: UsersClientProps) {
     ]
 
     return (
-        <div style={{ paddingTop: '0' }}>
-            <div className="flex flex-wrap items-center gap-2 mb-8 p-1.5 rounded-2xl w-fit" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', backdropFilter: 'blur(10px)' }}>
+        <div className="space-y-8" style={{ paddingTop: '0' }}>
+            {/* Unified Activity Chart at the top */}
+            {growthData.length > 0 && (
+                <UsersActivityChart
+                    data={growthData}
+                    title={t.users.charts.registrations}
+                    description="Évolution des inscriptions par rôle sur les 30 derniers jours"
+                />
+            )}
+
+            <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl w-fit" style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', backdropFilter: 'blur(10px)' }}>
                 {tabs.map(({ id, label, count, icon: Icon }) => {
                     const active = tab === id
                     return (

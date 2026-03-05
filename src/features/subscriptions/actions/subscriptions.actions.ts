@@ -38,13 +38,13 @@ export async function getSubscriptions(page = 1, limit = 20): Promise<PaginatedR
                 orderBy: { createdAt: 'desc' },
                 include: {
                     user: { select: { name: true, email: true, stripeCustomerId: true } },
-                    plan: { select: { name: true, price: true, interval: true } }
+                    plan: { select: { name: true, monthlyPrice: true, yearlyPrice: true } }
                 }
-            }),
+            } as any),
             prisma.subscription.count()
         ])
 
-        const data: SubscriptionDetails[] = subs.map(s => ({
+        const data: SubscriptionDetails[] = (subs as any[]).map(s => ({
             id: s.id,
             userId: s.userId,
             planId: s.planId,
@@ -52,8 +52,8 @@ export async function getSubscriptions(page = 1, limit = 20): Promise<PaginatedR
             createdAt: s.createdAt,
             currentPeriodEnd: s.currentPeriodEnd,
             planName: s.plan.name,
-            planPrice: s.plan.price,
-            interval: s.plan.interval,
+            planPrice: (typeof s.pricePaid === 'number' && s.plan.yearlyPrice > 0 && s.pricePaid >= s.plan.yearlyPrice) ? s.plan.yearlyPrice : s.plan.monthlyPrice,
+            interval: (typeof s.pricePaid === 'number' && s.plan.yearlyPrice > 0 && s.pricePaid >= s.plan.yearlyPrice) ? 'year' : 'month',
             userName: s.user.name || '—',
             userEmail: s.user.email,
             stripeSubscriptionId: s.stripeSubscriptionId,
@@ -78,9 +78,8 @@ export async function refundSubscription(subscriptionId: string) {
     try {
         await requirePermission('EDIT_USERS') // Or dedicated permission
 
-        const sub = await prisma.subscription.findUnique({
-            where: { id: subscriptionId },
-            select: { stripeSubscriptionId: true }
+        const sub = await (prisma.subscription.findUnique as any)({
+            where: { id: subscriptionId }
         })
 
         if (!sub?.stripeSubscriptionId) {
@@ -104,14 +103,29 @@ export async function refundSubscription(subscriptionId: string) {
             return { success: false, error: "Aucun paiement trouvé pour cette facture" }
         }
 
-        // 2. Refund the payment intent
-        await stripe.refunds.create({
-            payment_intent: paymentIntentId as string,
-        })
+        // 2. Annuler l'abonnement Stripe en premier
+        try {
+            await stripe.subscriptions.update((sub as any).stripeSubscriptionId, {
+                cancel_at_period_end: false,
+            })
+            await stripe.subscriptions.cancel((sub as any).stripeSubscriptionId)
+        } catch (cancelError: any) {
+            console.error('[REFUND] Erreur lors de l’annulation de l’abonnement Stripe:', cancelError)
+            // On continue pour essayer de rembourser même si l'annulation échoue (ex: déjà annulé)
+        }
 
-        // 3. Mark as refunded (optional: maybe update status or logic in DB)
-        // We might want to cancel the subscription too ?
-        await stripe.subscriptions.cancel((sub as any).stripeSubscriptionId)
+        // 3. Rembourser le payment intent
+        try {
+            await stripe.refunds.create({
+                payment_intent: paymentIntentId as string,
+            })
+        } catch (refundError: any) {
+            console.error('[REFUND] Erreur lors du remboursement:', refundError)
+            // Si c'est déjà remboursé, on continue pour mettre à jour la BDD
+            if (refundError.type !== 'StripeInvalidRequestError' || !refundError.message.includes('already been refunded')) {
+                throw refundError // Remonter les autres erreurs
+            }
+        }
 
         await prisma.subscription.update({
             where: { id: subscriptionId },

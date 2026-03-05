@@ -33,19 +33,34 @@ export function SubscriptionsDonutChart({ data }: SubscriptionsDonutChartProps) 
                                 stroke="rgba(255,255,255,0.05)"
                             >
                                 {data.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    <Cell
+                                        key={`cell-${index}`}
+                                        fill={COLORS[index % COLORS.length]}
+                                        stroke="var(--glass-border)"
+                                        strokeWidth={2}
+                                    />
                                 ))}
                             </Pie>
                             <Tooltip
-                                wrapperClassName="recharts-tooltip-custom"
-                                contentStyle={{ background: 'transparent', border: 'none', padding: 0 }}
-                                itemStyle={{ color: '#fff' }}
+                                content={({ active, payload }) => {
+                                    if (active && payload && payload.length) {
+                                        return (
+                                            <div className="bg-[var(--card-bg)] border border-[var(--glass-border)] p-3 rounded-xl shadow-2xl backdrop-blur-md">
+                                                <p className="text-xs font-bold text-white mb-1">{payload[0].name}</p>
+                                                <p className="text-sm font-black" style={{ color: payload[0].payload.fill }}>
+                                                    {payload[0].value} abonnés
+                                                </p>
+                                            </div>
+                                        )
+                                    }
+                                    return null
+                                }}
                             />
                             <Legend
                                 verticalAlign="bottom"
                                 height={36}
                                 iconType="circle"
-                                formatter={(value, entry, index) => <span className="text-sm text-slate-300">{value}</span>}
+                                formatter={(value) => <span className="text-xs font-medium text-slate-300 uppercase tracking-wider">{value}</span>}
                             />
                         </PieChart>
                     </ResponsiveContainer>

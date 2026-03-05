@@ -12,7 +12,8 @@ interface CreatePlanDialogProps {
     initialData?: any
     triggerLabel?: string
     triggerVariant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
-    defaultPrice?: number
+    defaultMonthlyPrice?: number
+    defaultYearlyPrice?: number
 }
 
 const DEFAULT_FEATURES: PlanFeatures = {
@@ -33,7 +34,7 @@ const DEFAULT_FEATURES: PlanFeatures = {
     isPopular: false,
 }
 
-export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "default", defaultPrice }: CreatePlanDialogProps) {
+export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "default", defaultMonthlyPrice, defaultYearlyPrice }: CreatePlanDialogProps) {
     const t = useT()
     const [isOpen, setIsOpen] = useState(false)
     const [pending, startTransition] = useTransition()
@@ -42,8 +43,8 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
     const [formData, setFormData] = useState<PlanData>({
         name: initialData?.name || '',
         slug: initialData?.slug || '',
-        price: initialData?.price ?? (defaultPrice ?? 0),
-        interval: initialData?.interval || 'month',
+        monthlyPrice: initialData?.monthlyPrice ?? (defaultMonthlyPrice ?? 0),
+        yearlyPrice: initialData?.yearlyPrice ?? (defaultYearlyPrice ?? 0),
         isActive: initialData?.isActive ?? true,
         sortOrder: initialData?.sortOrder || 0,
         features: {
@@ -58,8 +59,8 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
             setFormData({
                 name: initialData.name || '',
                 slug: initialData.slug || '',
-                price: initialData.price ?? 0,
-                interval: initialData.interval || 'month',
+                monthlyPrice: initialData.monthlyPrice ?? 0,
+                yearlyPrice: initialData.yearlyPrice ?? 0,
                 isActive: initialData.isActive ?? true,
                 sortOrder: initialData.sortOrder || 0,
                 features: {
@@ -71,8 +72,8 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
             setFormData({
                 name: '',
                 slug: '',
-                price: defaultPrice ?? 0,
-                interval: 'month',
+                monthlyPrice: defaultMonthlyPrice ?? 0,
+                yearlyPrice: defaultYearlyPrice ?? 0,
                 isActive: true,
                 sortOrder: 0,
                 features: DEFAULT_FEATURES
@@ -190,33 +191,30 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium">{t.pricing.plans.dialog.price}</label>
+                                    <label className="text-sm font-medium">Prix Mensuel (centimes)</label>
                                     <Input
                                         required
                                         type="number"
                                         min={0}
-                                        value={formData.price}
-                                        onChange={e => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
+                                        value={formData.monthlyPrice}
+                                        onChange={e => setFormData({ ...formData, monthlyPrice: parseInt(e.target.value) || 0 })}
                                         placeholder="2900 pour 29€"
                                         className="settings-input font-mono"
                                     />
-                                    <p className="text-xs text-muted-foreground">{formData.price / 100} €</p>
+                                    <p className="text-xs text-muted-foreground">{formData.monthlyPrice / 100} € / mois</p>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground ml-1">{t.pricing.plans.dialog.interval}</label>
-                                    <div className="relative group">
-                                        <select
-                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
-                                            value={formData.interval}
-                                            onChange={e => setFormData({ ...formData, interval: e.target.value })}
-                                        >
-                                            <option value="month" className="bg-slate-900">{t.pricing.plans.dialog.monthly}</option>
-                                            <option value="year" className="bg-slate-900">{t.pricing.plans.dialog.annual}</option>
-                                        </select>
-                                        <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground group-focus-within:text-primary transition-colors">
-                                            <ChevronDown className="h-4 w-4" />
-                                        </div>
-                                    </div>
+                                    <label className="text-sm font-medium">Prix Annuel (centimes)</label>
+                                    <Input
+                                        required
+                                        type="number"
+                                        min={0}
+                                        value={formData.yearlyPrice}
+                                        onChange={e => setFormData({ ...formData, yearlyPrice: parseInt(e.target.value) || 0 })}
+                                        placeholder="29000 pour 290€"
+                                        className="settings-input font-mono"
+                                    />
+                                    <p className="text-xs text-muted-foreground">{formData.yearlyPrice / 100} € / an</p>
                                 </div>
                             </div>
                         </div>

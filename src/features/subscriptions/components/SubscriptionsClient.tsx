@@ -223,10 +223,26 @@ export function SubscriptionsClient({ initial }: { initial: PaginatedResult<Subs
                                                             Voir l'utilisateur
                                                         </DropdownMenuItem>
                                                     </Link>
-                                                    <DropdownMenuItem className="hover:bg-white/5 cursor-pointer gap-2">
-                                                        <Receipt className="w-4 h-4 text-slate-400" />
-                                                        Factures Stripe
-                                                    </DropdownMenuItem>
+                                                    {sub.stripeSubscriptionId ? (
+                                                        <Link href={`https://dashboard.stripe.com/subscriptions/${sub.stripeSubscriptionId}`} target="_blank" rel="noopener noreferrer">
+                                                            <DropdownMenuItem className="hover:bg-white/5 cursor-pointer gap-2">
+                                                                <Receipt className="w-4 h-4 text-slate-400" />
+                                                                Factures Stripe
+                                                            </DropdownMenuItem>
+                                                        </Link>
+                                                    ) : sub.stripeCustomerId ? (
+                                                        <Link href={`https://dashboard.stripe.com/customers/${sub.stripeCustomerId}`} target="_blank" rel="noopener noreferrer">
+                                                            <DropdownMenuItem className="hover:bg-white/5 cursor-pointer gap-2">
+                                                                <Receipt className="w-4 h-4 text-slate-400" />
+                                                                Factures Stripe
+                                                            </DropdownMenuItem>
+                                                        </Link>
+                                                    ) : (
+                                                        <DropdownMenuItem className="hover:bg-white/5 gap-2 text-slate-500" disabled>
+                                                            <Receipt className="w-4 h-4 text-slate-600" />
+                                                            Factures Stripe (N/A)
+                                                        </DropdownMenuItem>
+                                                    )}
                                                     <DropdownMenuSeparator className="bg-[var(--glass-border)]" />
                                                     {sub.status === 'active' && (
                                                         <DropdownMenuItem

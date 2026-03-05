@@ -1,12 +1,14 @@
 'use server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/session'
+import { stripe } from '@/lib/stripe'
+import Stripe from 'stripe'
 
 export interface AnalyticsStats {
     totalClients: number
     totalAdminUsers: number
     activeSubscriptions: number
-    totalRevenue: number // Centimes
+    totalRevenue: number // This will now represent MRR in centimes
     newUsersLast30Days: number
     recentSubscribers: any[]
     revenueData: any[]
@@ -21,6 +23,7 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
+    // Parallel calls: DB counts + Stripe MRR
     const [
         totalClients,
         totalAdminUsers,
@@ -28,6 +31,7 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
         newUsersCount,
         techWatchesLast30,
         activeSubsLast30,
+        stripeMRR,
     ] = await Promise.all([
         // App-client users (role == USER)
         prisma.user.count({ where: { role: 'USER' } }),
@@ -35,7 +39,7 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
         // Admin users (role != USER)
         prisma.user.count({ where: { role: { not: 'USER' } } }),
 
-        // Subscriptions with plan (for revenue calc)
+        // Subscriptions with plan (for analytics charts)
         prisma.subscription.findMany({
             where: { status: 'active' },
             include: { plan: true }
@@ -59,6 +63,9 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
             select: { createdAt: true },
             orderBy: { createdAt: 'asc' }
         }),
+
+        // Real-time MRR from Stripe
+        calculateStripeMRR()
     ])
 
     // Get 5 most recent active subscribers with user info
@@ -81,10 +88,7 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
     }))
 
     const activeSubscriptions = subscriptions.length
-    const totalRevenue = subscriptions.reduce((acc: number, sub: any) => {
-        const price = sub.pricePaid || sub.plan?.price || 0
-        return acc + price
-    }, 0)
+    const totalRevenue = stripeMRR // Centimes (Monthly Recurring Revenue)
 
     // Aggrégation: Distribution des abonnements par plan (Donut Chart)
     const distributionMap = new Map<string, number>()
@@ -117,23 +121,48 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
         return m
     }
 
-    // Aggrégation: Croissance utilisateurs 30 derniers jours (Area Chart)
+    // Aggrégation: Croissance utilisateurs par rôle 30 derniers jours (Area Chart)
     const usersLast30Docs = await prisma.user.findMany({
         where: { createdAt: { gte: thirtyDaysAgo } },
-        select: { createdAt: true },
+        select: { createdAt: true, role: true },
         orderBy: { createdAt: 'asc' }
     })
 
-    const usersGrowthMap = init30DaysMap()
+    const usersGrowthMap = new Map<string, Record<string, number>>()
+    // Initialize map with empty objects for each of the last 30 days
+    for (let i = 29; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
+        const dStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`
+        usersGrowthMap.set(dStr, {
+            USER: 0,
+            ADMIN: 0,
+            SUPER_ADMIN: 0,
+            SUPPORT: 0,
+            READ_ONLY: 0
+        })
+    }
+
     usersLast30Docs.forEach((u: any) => {
         const d = u.createdAt
         const dStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`
+        const role = u.role || 'USER'
+
         if (usersGrowthMap.has(dStr)) {
-            usersGrowthMap.set(dStr, usersGrowthMap.get(dStr)! + 1)
+            const counts = usersGrowthMap.get(dStr)!
+            // Only count known roles
+            if (counts.hasOwnProperty(role)) {
+                counts[role]++
+            } else if (role === 'BANNED') {
+                // If banned, we can count as USER or ignore, let's ignore to focus on management roles
+                // Or maybe the user wants it. For now, let's keep it clean with the main roles.
+            }
         }
     })
 
-    const usersGrowth = Array.from(usersGrowthMap.entries()).map(([date, users]) => ({ date, users }))
+    const usersGrowth = Array.from(usersGrowthMap.entries()).map(([date, roles]) => ({
+        date,
+        ...roles
+    }))
 
     // Aggrégation: Croissance TechWatches
     const twGrowthMap = init30DaysMap()
@@ -180,7 +209,7 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
 
     subscriptions.forEach((sub: any) => {
         const d = sub.createdAt as Date
-        const price = (sub.pricePaid || sub.plan?.price || 0) / 100
+        const price = (typeof sub.pricePaid === 'number' ? sub.pricePaid : (sub.plan?.monthlyPrice || 0)) / 100
 
         if (d < sixMonthsAgo) {
             cumulativeRevenue += price
@@ -213,3 +242,57 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
         subscriptionsDistribution
     }
 }
+
+/**
+ * Calculates current Monthly Recurring Revenue (MRR) from active Stripe subscriptions.
+ * Accounts for monthly/yearly plans, discounts, and coupons.
+ * Uses auto-pagination to handle large amounts of data.
+ */
+async function calculateStripeMRR(): Promise<number> {
+    try {
+        let totalCents = 0
+
+        // Auto-pagination using for-await loop
+        for await (const sub of stripe.subscriptions.list({
+            status: 'active',
+            expand: ['data.discount', 'data.discount.coupon']
+        }) as any) {
+            // We assume 1 item per subscription in TechWatch model
+            const item = sub.items.data[0]
+            if (!item?.price) continue
+
+            const unitAmount = item.price.unit_amount || 0
+            const interval = item.price.recurring?.interval || 'month'
+            const quantity = item.quantity || 1
+
+            // Monthly base amount before discounts
+            let monthlyBase = interval === 'year'
+                ? (unitAmount * quantity) / 12
+                : (unitAmount * quantity)
+
+            // Apply discounts if present
+            const discount = (sub as any).discount
+            if (discount?.coupon) {
+                const coupon = discount.coupon as Stripe.Coupon
+                if (coupon.percent_off) {
+                    monthlyBase *= (1 - coupon.percent_off / 100)
+                } else if (coupon.amount_off) {
+                    // If the coupon is amount-off, substract it
+                    // Note: usually amount_off is also monthly or yearly depending on coupon duration
+                    const discountValue = interval === 'year'
+                        ? coupon.amount_off / 12
+                        : coupon.amount_off
+                    monthlyBase = Math.max(0, monthlyBase - discountValue)
+                }
+            }
+
+            totalCents += monthlyBase
+        }
+
+        return Math.round(totalCents)
+    } catch (error) {
+        console.error('[STRIPE_MRR] Error calculating MRR:', error)
+        return 0
+    }
+}
+

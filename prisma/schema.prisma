@@ -74,15 +74,16 @@ model Plan {
   id              String         @id @default(cuid())
   name            String         @unique
   slug            String         @unique
-  price           Int
-  interval        String         @default("month")
-  features        Json
-  isActive        Boolean        @default(true)
-  sortOrder       Int            @default(0)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  stripePriceId   String?        @unique
-  stripeProductId String?
+  monthlyPrice         Int            @default(0)
+  yearlyPrice          Int            @default(0)
+  features             Json
+  isActive             Boolean        @default(true)
+  sortOrder            Int            @default(0)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  stripeMonthlyPriceId String?        @unique
+  stripeYearlyPriceId  String?        @unique
+  stripeProductId      String?
   subscriptions   Subscription[]
   promotions      Promotion[]
 
@@ -415,6 +416,7 @@ model AiConfig {
   userId         String   @unique
   provider       String   @default("groq")
   apiKey         String
+  baseUrl        String?
   model          String   @default("llama-3.3-70b-versatile")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @default(now())

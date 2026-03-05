@@ -18,6 +18,7 @@ import { TechWatchesActivityChart } from './TechWatchesActivityChart'
 import { getAnalyticsStats } from '@/features/analytics/actions/analytics.actions'
 import { deleteTechWatch } from '@/features/techwatches/actions/techwatches.actions'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { TechWatchDetailSheet } from './TechWatchDetailSheet'
 
 interface TechWatch {
     id: string
@@ -45,6 +46,8 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
     const [growthData, setGrowthData] = useState<any[]>([])
     const [isPending, startTransition] = useTransition()
     const [deleteId, setDeleteId] = useState<string | null>(null)
+    const [selectedTW, setSelectedTW] = useState<TechWatch | null>(null)
+    const [isSheetOpen, setIsSheetOpen] = useState(false)
 
     useEffect(() => {
         getAnalyticsStats().then(stats => {
@@ -54,6 +57,16 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
 
     const handleDelete = (id: string) => {
         setDeleteId(id)
+    }
+
+    const handleViewDetails = (tw: TechWatch) => {
+        setSelectedTW(tw)
+        setIsSheetOpen(true)
+    }
+
+    const handleOpenClient = (id: string) => {
+        const clientUrl = process.env.NEXT_PUBLIC_CLIENT_APP_URL || 'http://localhost:3000'
+        window.open(`${clientUrl}/dashboard/${id}`, '_blank')
     }
 
     const confirmDelete = () => {
@@ -214,11 +227,17 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
                                                 <DropdownMenuContent align="end" className="w-[160px] bg-[var(--card-bg)] border-[var(--glass-border)] text-white">
                                                     <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Actions</DropdownMenuLabel>
                                                     <DropdownMenuSeparator className="bg-[var(--glass-border)]" />
-                                                    <DropdownMenuItem className="hover:bg-white/5 cursor-pointer gap-2">
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleViewDetails(tw)}
+                                                        className="hover:bg-white/5 cursor-pointer gap-2"
+                                                    >
                                                         <Eye className="w-4 h-4 text-primary" />
                                                         Voir les détails
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem className="hover:bg-white/5 cursor-pointer gap-2">
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleOpenClient(tw.id)}
+                                                        className="hover:bg-white/5 cursor-pointer gap-2"
+                                                    >
                                                         <ExternalLink className="w-4 h-4 text-blue-400" />
                                                         Ouvrir Client
                                                     </DropdownMenuItem>
@@ -241,6 +260,12 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
                     </table>
                 </div>
             </div>
+
+            <TechWatchDetailSheet
+                techWatch={selectedTW}
+                isOpen={isSheetOpen}
+                onClose={() => setIsSheetOpen(false)}
+            />
 
             <ConfirmModal
                 isOpen={!!deleteId}

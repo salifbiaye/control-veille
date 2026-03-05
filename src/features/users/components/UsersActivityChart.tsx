@@ -1,7 +1,7 @@
 "use client"
 
 import { TrendingUp, Users } from "lucide-react"
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Legend } from "recharts"
 import {
   Card,
   CardContent,
@@ -20,23 +20,43 @@ import { useT } from "@/lib/i18n/locale-context"
 
 interface UserGrowthData {
   date: string
-  users: number
+  USER?: number
+  ADMIN?: number
+  SUPER_ADMIN?: number
+  SUPPORT?: number
+  READ_ONLY?: number
 }
 
 interface UsersActivityChartProps {
   data: UserGrowthData[]
+  title?: string
+  description?: string
 }
 
-export function UsersActivityChart({ data }: UsersActivityChartProps) {
+const ROLE_CONFIG = [
+  { key: 'USER', color: '#3B82F6', label: 'Clients' },
+  { key: 'ADMIN', color: '#F59E0B', label: 'Admins' },
+  { key: 'SUPER_ADMIN', color: '#EF4444', label: 'Super' },
+  { key: 'SUPPORT', color: '#8B5CF6', label: 'Support' },
+  { key: 'READ_ONLY', color: '#64748B', label: 'Lecteurs' },
+]
+
+export function UsersActivityChart({ data, title, description }: UsersActivityChartProps) {
   const t = useT()
-  const total = data.reduce((sum, item) => sum + item.users, 0)
+
+  // Calculate total registrations across all roles for summary
+  const total = data.reduce((sum, item) => {
+    return sum + (item.USER || 0) + (item.ADMIN || 0) + (item.SUPER_ADMIN || 0) + (item.SUPPORT || 0) + (item.READ_ONLY || 0)
+  }, 0)
+
   const avg = data.length > 0 ? (total / data.length).toFixed(1) : 0
 
   const chartConfig = {
-    users: {
-      label: t.users.tabs.clients,
-      color: "#3B82F6",
-    },
+    USER: { label: 'Client', color: "#3B82F6" },
+    ADMIN: { label: 'Admin', color: "#F59E0B" },
+    SUPER_ADMIN: { label: 'Super Admin', color: "#EF4444" },
+    SUPPORT: { label: 'Support', color: "#8B5CF6" },
+    READ_ONLY: { label: 'Lecture Seule', color: "#64748B" },
   } satisfies ChartConfig
 
   return (
@@ -45,10 +65,10 @@ export function UsersActivityChart({ data }: UsersActivityChartProps) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-lg font-bold text-[var(--page-fg)]">
-              {t.users.charts.registrations}
+              {title || t.users.charts.registrations}
             </CardTitle>
             <CardDescription className="text-sm text-muted-foreground">
-              {t.users.charts.registrationsDesc}
+              {description || t.users.charts.registrationsDesc}
             </CardDescription>
           </div>
           <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
@@ -57,16 +77,18 @@ export function UsersActivityChart({ data }: UsersActivityChartProps) {
         </div>
       </CardHeader>
       <CardContent className="pb-0">
-        <ChartContainer config={chartConfig} className="h-[200px] w-full">
+        <ChartContainer config={chartConfig} className="h-[250px] w-full">
           <AreaChart
             data={data}
-            margin={{ left: 0, right: 0, top: 0, bottom: 0 }}
+            margin={{ left: 0, right: 0, top: 10, bottom: 0 }}
           >
             <defs>
-              <linearGradient id="fillUsers" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-              </linearGradient>
+              {ROLE_CONFIG.map(role => (
+                <linearGradient key={`fill${role.key}`} id={`fill${role.key}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={role.color} stopOpacity={0.2} />
+                  <stop offset="95%" stopColor={role.color} stopOpacity={0} />
+                </linearGradient>
+              ))}
             </defs>
             <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
             <XAxis
@@ -75,7 +97,6 @@ export function UsersActivityChart({ data }: UsersActivityChartProps) {
               axisLine={false}
               tickMargin={12}
               tick={{ fill: 'var(--txt-sub)', fontSize: 10 }}
-              tickFormatter={(value) => value} // "DD/MM" is already formatted
             />
             <YAxis
               tickLine={false}
@@ -84,17 +105,40 @@ export function UsersActivityChart({ data }: UsersActivityChartProps) {
               tick={{ fill: 'var(--txt-sub)', fontSize: 10 }}
             />
             <ChartTooltip
-              cursor={{ stroke: 'rgba(59, 130, 246, 0.2)', strokeWidth: 2 }}
+              cursor={{ stroke: 'rgba(255, 255, 255, 0.1)', strokeWidth: 2 }}
               content={<ChartTooltipContent indicator="dot" />}
             />
-            <Area
-              dataKey="users"
-              type="monotone"
-              fill="url(#fillUsers)"
-              stroke="#3B82F6"
-              strokeWidth={2}
-              activeDot={{ r: 4, fill: "#3B82F6", strokeWidth: 0 }}
+            <Legend
+              verticalAlign="top"
+              align="right"
+              iconType="circle"
+              content={(props) => {
+                const { payload } = props;
+                return (
+                  <div className="flex gap-4 justify-end mb-4 text-[10px] font-bold tracking-tight uppercase">
+                    {payload?.map((entry: any, index: number) => (
+                      <div key={`item-${index}`} className="flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                        <span className="text-muted-foreground">{entry.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }}
             />
+            {ROLE_CONFIG.map(role => (
+              <Area
+                key={role.key}
+                dataKey={role.key}
+                name={role.label}
+                type="monotone"
+                fill={`url(#fill${role.key})`}
+                stroke={role.color}
+                strokeWidth={2}
+                activeDot={{ r: 4, strokeWidth: 0 }}
+                stackId="1"
+              />
+            ))}
           </AreaChart>
         </ChartContainer>
       </CardContent>
