@@ -27,6 +27,7 @@ export interface PlanFeatures {
   articles: number
   tasks: number
   resources: number
+  agenda: boolean
   [key: string]: number | boolean
 }
 
@@ -154,7 +155,7 @@ export default async function PricingPage() {
                       </li>
                       <li className="flex items-center gap-3 text-slate-300">
                         <div className="p-0.5 rounded-full bg-emerald-500/20 text-emerald-400"><Check className="w-3 h-3" strokeWidth={3} /></div>
-                        <span className="font-medium text-white">{features.notes === -1 ? 'Illimitées' : (features.notes || '0')}</span> Notes / TechWatch
+                        <span className="font-medium text-white">{features.notes === -1 ? 'Illimitées' : (features.notes || '0')}</span> Notes
                       </li>
                       <li className="flex items-center gap-3 text-slate-300">
                         <div className="p-0.5 rounded-full bg-emerald-500/20 text-emerald-400"><Check className="w-3 h-3" strokeWidth={3} /></div>
@@ -175,6 +176,10 @@ export default async function PricingPage() {
                       <li className="flex items-center gap-3 text-slate-300">
                         {features.roadmap ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
                         <span className={features.roadmap ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>Roadmaps</span>
+                      </li>
+                      <li className="flex items-center gap-3 text-slate-300">
+                        {features.agenda ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
+                        <span className={features.agenda ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>Agenda Pro (Heatmap & Backlog)</span>
                       </li>
                       <li className="flex items-center gap-3 text-slate-300">
                         {features.comparisons ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}

@@ -11,6 +11,7 @@ import { requirePermission } from '@/lib/session'
 export interface PlanFeatures {
     resources: number
     isPopular?: boolean
+    agenda?: boolean
     [key: string]: number | boolean | undefined
 }
 
@@ -46,15 +47,6 @@ export async function getPlans() {
             orderBy: { sortOrder: 'asc' },
         })
 
-        // Count users who have NO subscription at all
-        const usersWithoutSubscription = await prisma.user.count({
-            where: {
-                subscription: {
-                    is: null
-                }
-            }
-        })
-
         // Manual count for active subscriptions to ensure precision
         const plansWithCounts = await Promise.all(plans.map(async (plan) => {
             const activeCount = await prisma.subscription.count({
@@ -64,14 +56,10 @@ export async function getPlans() {
                 }
             })
 
-            // If it's a FREE plan, add the ghosts (users without sub record)
-            const isFree = plan.monthlyPrice === 0 && plan.yearlyPrice === 0
-            const totalDisplayCount = isFree ? activeCount + usersWithoutSubscription : activeCount
-
             return {
                 ...plan,
                 _count: {
-                    subscriptions: totalDisplayCount
+                    subscriptions: activeCount
                 }
             }
         }))

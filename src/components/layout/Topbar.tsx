@@ -10,6 +10,7 @@ import { useAdminShortcuts } from '@/hooks/useAdminShortcuts'
 import { useLocale, useT } from '@/lib/i18n/locale-context'
 import { UserMenu } from './UserMenu'
 import { LanguageSwitcher } from './LanguageSwitcher'
+import { useSidebar } from './SidebarLayout'
 
 interface TopbarProps {
   userName?: string | null
@@ -21,6 +22,7 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
   const { locale } = useLocale()
   const t = useT()
 
+  const { isMinimized } = useSidebar()
   const [cmdOpen, setCmdOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
 
@@ -44,10 +46,12 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
   return (
     <>
       <header
-        className="fixed top-0 left-0 lg:left-56 right-0 z-40 h-14 flex items-center justify-between px-4 sm:px-6 gap-4"
+        className="fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-4 sm:px-6 gap-4 transition-[left] duration-300 ease-in-out"
         style={{
-          background: 'rgba(10,10,18,0.92)',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          left: isMinimized ? '72px' : '224px',
+          background: 'var(--navbar-bg)',
+          backdropFilter: 'blur(var(--navbar-blur, 12px))',
+          borderBottom: '1px solid var(--navbar-border)',
         }}
       >
         {/* Left: breadcrumb */}
@@ -61,7 +65,7 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
                   className="text-[13px] whitespace-nowrap overflow-hidden text-ellipsis"
                   style={{
                     fontWeight: i === crumbs.length - 1 ? 600 : 400,
-                    color: i === crumbs.length - 1 ? 'rgba(248,250,252,0.95)' : 'rgba(248,250,252,0.50)',
+                    color: i === crumbs.length - 1 ? 'var(--page-fg)' : 'var(--txt-muted)',
                   }}
                 >
                   {crumb.label}
@@ -76,11 +80,11 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
           {/* Search */}
           <button
             onClick={openCmd}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border transition-colors hover:opacity-80"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors hover:opacity-80"
             style={{
-              borderColor: 'rgba(255,255,255,0.10)',
-              color: 'rgba(248,250,252,0.60)',
-              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid var(--glass-border)',
+              color: 'var(--txt-sub)',
+              background: 'var(--glass-bg)',
             }}
           >
             <Search className="w-3.5 h-3.5" />
@@ -88,9 +92,9 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
             <kbd
               className="hidden sm:flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded"
               style={{
-                background: 'rgba(255,255,255,0.08)',
-                color: 'rgba(248,250,252,0.60)',
-                border: '1px solid rgba(255,255,255,0.10)',
+                background: 'var(--glass-border)',
+                color: 'var(--txt-sub)',
+                border: '1px solid var(--glass-border)',
               }}
             >
               ⌃K

@@ -37,7 +37,8 @@ async function main() {
         {
             name: 'Free',
             slug: 'free',
-            price: 0,
+            monthlyPrice: 0,
+            yearlyPrice: 0,
             features: {
                 techLimit: 3,
                 aiAssistant: false,
@@ -49,7 +50,8 @@ async function main() {
         {
             name: 'Pro',
             slug: 'pro',
-            price: 1900,
+            monthlyPrice: 1900,
+            yearlyPrice: 19000,
             features: {
                 techLimit: 10,
                 aiAssistant: true,
@@ -61,7 +63,8 @@ async function main() {
         {
             name: 'Enterprise',
             slug: 'enterprise',
-            price: 4900,
+            monthlyPrice: 4900,
+            yearlyPrice: 49000,
             features: {
                 techLimit: 100,
                 aiAssistant: true,

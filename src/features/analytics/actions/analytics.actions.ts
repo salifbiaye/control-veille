@@ -134,6 +134,7 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
         const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
         const dStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`
         usersGrowthMap.set(dStr, {
+            users: 0,
             USER: 0,
             ADMIN: 0,
             SUPER_ADMIN: 0,
@@ -149,12 +150,10 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
 
         if (usersGrowthMap.has(dStr)) {
             const counts = usersGrowthMap.get(dStr)!
+            counts.users++
             // Only count known roles
             if (counts.hasOwnProperty(role)) {
                 counts[role]++
-            } else if (role === 'BANNED') {
-                // If banned, we can count as USER or ignore, let's ignore to focus on management roles
-                // Or maybe the user wants it. For now, let's keep it clean with the main roles.
             }
         }
     })

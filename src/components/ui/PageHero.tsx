@@ -16,7 +16,7 @@ export function PageHero({
     children,
 }: PageHeroProps) {
     return (
-        <div className="relative overflow-hidden mb-8 page-hero rounded-b-3xl"
+        <div className="relative overflow-hidden mb-8 page-hero "
             style={{
                 border: `1px solid var(--chrome-border)`,
                 backgroundColor: 'rgba(255, 255, 255, 0.02)',

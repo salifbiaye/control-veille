@@ -31,6 +31,7 @@ const DEFAULT_FEATURES: PlanFeatures = {
     articles: 100,
     tasks: 100,
     resources: 100,
+    agenda: false,
     isPopular: false,
 }
 
@@ -228,245 +229,253 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <p className="text-xs text-muted-foreground">{formData.yearlyPrice / 100} € / an</p>
                                 </div>
                             </div>
-                            <div className="space-y-2 pt-2">
-                                <label className="text-sm font-bold text-primary flex items-center gap-2">
-                                    <Rocket className="w-4 h-4" />
-                                    Période d'essai (jours)
-                                </label>
-                                <Input
-                                    type="number"
-                                    min={0}
-                                    max={30}
-                                    value={formData.trialDays}
-                                    onChange={e => setFormData({ ...formData, trialDays: parseInt(e.target.value) || 0 })}
-                                    className="settings-input border-primary/30 focus:border-primary"
-                                />
-                                <p className="text-xs text-muted-foreground">L'utilisateur ne sera pas débité pendant cette période.</p>
-                            </div>
-                        </div>
-
-                        {/* Limites d'usage */}
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t.pricing.plans.dialog.limits}</h3>
-                            <div className="flex flex-col gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium flex items-center gap-2">
-                                        <LayoutDashboard className="w-4 h-4 text-muted-foreground" />
-                                        {t.pricing.plans.dialog.techWatches}
+                            {!!initialData?.stripeMonthlyPriceId && (
+                                <div className="space-y-2 pt-2">
+                                    <label className="text-sm font-bold text-primary flex items-center gap-2">
+                                        <Rocket className="w-4 h-4" />
+                                        Période d'essai (jours)
                                     </label>
                                     <Input
-                                        required
                                         type="number"
-                                        value={formData.features.techWatches as any}
-                                        onChange={e => updateFeature('techWatches', parseInt(e.target.value))}
-                                        className="settings-input"
+                                        min={0}
+                                        max={30}
+                                        value={formData.trialDays}
+                                        onChange={e => setFormData({ ...formData, trialDays: parseInt(e.target.value) || 0 })}
+                                        className="settings-input border-primary/30 focus:border-primary"
                                     />
+                                    <p className="text-xs text-muted-foreground">L'utilisateur ne sera pas débité pendant cette période.</p>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium flex items-center gap-2">
-                                        <HardDrive className="w-4 h-4 text-muted-foreground" />
-                                        {t.pricing.plans.dialog.storage}
-                                    </label>
-                                    <Input
-                                        required
-                                        type="number"
-                                        min={0.1}
-                                        step={0.1}
-                                        value={(formData.features.storage as number) / 1073741824}
-                                        onChange={e => updateFeature('storage', (parseFloat(e.target.value) || 0) * 1073741824)}
-                                        className="settings-input"
-                                    />
-                                </div>
-                                <div className="space-y-2 col-span-2">
-                                    <label className="text-sm font-medium">{t.pricing.plans.dialog.notes}</label>
-                                    <Input
-                                        required
-                                        type="number"
-                                        value={formData.features.notes as any}
-                                        onChange={e => updateFeature('notes', parseInt(e.target.value))}
-                                        className="settings-input"
-                                    />
-                                    <p className="text-[10px] text-muted-foreground italic">-1 = illimité</p>
-                                </div>
-                                <div className="space-y-2 col-span-2">
-                                    <label className="text-sm font-medium">Articles autorisés</label>
-                                    <Input
-                                        required
-                                        type="number"
-                                        value={formData.features.articles as any}
-                                        onChange={e => updateFeature('articles', parseInt(e.target.value))}
-                                        className="settings-input"
-                                    />
-                                </div>
-                                <div className="space-y-2 col-span-2">
-                                    <label className="text-sm font-medium">Tâches autorisées</label>
-                                    <Input
-                                        required
-                                        type="number"
-                                        value={formData.features.tasks as any}
-                                        onChange={e => updateFeature('tasks', parseInt(e.target.value))}
-                                        className="settings-input"
-                                    />
-                                </div>
-                                <div className="space-y-2 col-span-2">
-                                    <label className="text-sm font-medium">Ressources autorisées</label>
-                                    <Input
-                                        required
-                                        type="number"
-                                        value={formData.features.resources as any}
-                                        onChange={e => updateFeature('resources', parseInt(e.target.value))}
-                                        className="settings-input"
-                                    />
-                                </div>
-                                <div className="space-y-2 col-span-2 pt-2 border-t border-white/5">
-                                    <label className="text-sm font-medium flex items-center gap-2">
-                                        <GraduationCap className="w-4 h-4 text-primary" />
-                                        Nombre de cours autorisés
-                                    </label>
-                                    <Input
-                                        required
-                                        type="number"
-                                        value={formData.features.courses as any}
-                                        onChange={e => updateFeature('courses', parseInt(e.target.value))}
-                                        className="settings-input"
-                                    />
-                                    <p className="text-[10px] text-muted-foreground italic">Ex: 0 (aucun), 5 (limité), -1 (illimité)</p>
-                                </div>
-                            </div>
+                            )}
                         </div>
 
-                        {/* Features (Toggles) */}
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t.pricing.plans.dialog.features}</h3>
-                            <div className="flex flex-col gap-4">
-
-                                <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
-                                    <input
-                                        type="checkbox"
-                                        className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                                        checked={!!formData.features.companion}
-                                        onChange={e => updateFeature('companion', e.target.checked)}
-                                    />
-                                    <div>
-                                        <div className="text-sm font-medium flex items-center gap-2">
-                                            <BrainCircuit className="w-4 h-4 text-purple-500" />
-                                            {t.pricing.plans.dialog.companion}
+                        {!initialData?.stripeMonthlyPriceId && (
+                            <>
+                                {/* Limites d'usage */}
+                                <div className="space-y-4">
+                                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t.pricing.plans.dialog.limits}</h3>
+                                    <div className="flex flex-col gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium flex items-center gap-2">
+                                                <LayoutDashboard className="w-4 h-4 text-muted-foreground" />
+                                                {t.pricing.plans.dialog.techWatches}
+                                            </label>
+                                            <Input
+                                                required
+                                                type="number"
+                                                value={formData.features.techWatches as any}
+                                                onChange={e => updateFeature('techWatches', parseInt(e.target.value) || 0)}
+                                                className="settings-input"
+                                            />
                                         </div>
-                                        <div className="text-xs text-muted-foreground mt-1">{t.pricing.plans.dialog.companionDesc}</div>
-                                    </div>
-                                </label>
-
-                                <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
-                                    <input
-                                        type="checkbox"
-                                        className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                                        checked={!!formData.features.interviews}
-                                        onChange={e => updateFeature('interviews', e.target.checked)}
-                                    />
-                                    <div>
-                                        <div className="text-sm font-medium flex items-center gap-2">
-                                            <BrainCircuit className="w-4 h-4 text-blue-400" />
-                                            Simulateur & Quiz
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium flex items-center gap-2">
+                                                <HardDrive className="w-4 h-4 text-muted-foreground" />
+                                                {t.pricing.plans.dialog.storage}
+                                            </label>
+                                            <Input
+                                                required
+                                                type="number"
+                                                min={0.1}
+                                                step={0.1}
+                                                value={(formData.features.storage as number) / 1073741824}
+                                                onChange={e => updateFeature('storage', (parseFloat(e.target.value) || 0) * 1073741824)}
+                                                className="settings-input"
+                                            />
                                         </div>
-                                        <div className="text-xs text-muted-foreground mt-1">Autorise l'accès aux quiz interactifs et simulations d'entretiens.</div>
-                                    </div>
-                                </label>
-
-                                <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
-                                    <input
-                                        type="checkbox"
-                                        className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                                        checked={!!formData.features.mindmaps}
-                                        onChange={e => updateFeature('mindmaps', e.target.checked)}
-                                    />
-                                    <div>
-                                        <div className="text-sm font-medium flex items-center gap-2">
-                                            <BrainCircuit className="w-4 h-4 text-emerald-500" />
-                                            Génération de Mindmaps
+                                        <div className="space-y-2 col-span-2">
+                                            <label className="text-sm font-medium">{t.pricing.plans.dialog.notes}</label>
+                                            <Input
+                                                required
+                                                type="number"
+                                                value={formData.features.notes as any}
+                                                onChange={e => updateFeature('notes', parseInt(e.target.value) || 0)}
+                                                className="settings-input"
+                                            />
+                                            <p className="text-[10px] text-muted-foreground italic">-1 = illimité</p>
                                         </div>
-                                        <div className="text-xs text-muted-foreground mt-1">Autorise l'utilisateur à créer des cartes mentales IA.</div>
-                                    </div>
-                                </label>
-
-                                <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
-                                    <input
-                                        type="checkbox"
-                                        className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                                        checked={!!formData.features.roadmap}
-                                        onChange={e => updateFeature('roadmap', e.target.checked)}
-                                    />
-                                    <div>
-                                        <div className="text-sm font-medium flex items-center gap-2">
-                                            <Rocket className="w-4 h-4 text-blue-500" />
-                                            Génération de Roadmaps
+                                        <div className="space-y-2 col-span-2">
+                                            <label className="text-sm font-medium">Articles autorisés</label>
+                                            <Input
+                                                required
+                                                type="number"
+                                                value={formData.features.articles as any}
+                                                onChange={e => updateFeature('articles', parseInt(e.target.value) || 0)}
+                                                className="settings-input"
+                                            />
                                         </div>
-                                        <div className="text-xs text-muted-foreground mt-1">Autorise l'utilisateur à générer des parcours d'apprentissage IA.</div>
-                                    </div>
-                                </label>
-
-                                <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
-                                    <input
-                                        type="checkbox"
-                                        className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                                        checked={!!formData.features.comparisons}
-                                        onChange={e => updateFeature('comparisons', e.target.checked)}
-                                    />
-                                    <div>
-                                        <div className="text-sm font-medium flex items-center gap-2">
-                                            <LayoutDashboard className="w-4 h-4 text-amber-500" />
-                                            Tableaux Comparatifs
+                                        <div className="space-y-2 col-span-2">
+                                            <label className="text-sm font-medium">Tâches autorisées</label>
+                                            <Input
+                                                required
+                                                type="number"
+                                                value={formData.features.tasks as any}
+                                                onChange={e => updateFeature('tasks', parseInt(e.target.value) || 0)}
+                                                className="settings-input"
+                                            />
                                         </div>
-                                        <div className="text-xs text-muted-foreground mt-1">Autorise la création de comparaisons IA entre technologies.</div>
-                                    </div>
-                                </label>
-
-                                <label className="flex items-start gap-3 p-4 rounded-lg border border-primary/20 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors">
-                                    <input
-                                        type="checkbox"
-                                        className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                                        checked={!!formData.features.isPopular}
-                                        onChange={e => updateFeature('isPopular', e.target.checked)}
-                                    />
-                                    <div>
-                                        <div className="text-sm font-bold flex items-center gap-2 text-primary">
-                                            <Rocket className="w-4 h-4" />
-                                            Badge "Populaire"
+                                        <div className="space-y-2 col-span-2">
+                                            <label className="text-sm font-medium">Ressources autorisées</label>
+                                            <Input
+                                                required
+                                                type="number"
+                                                value={formData.features.resources as any}
+                                                onChange={e => updateFeature('resources', parseInt(e.target.value) || 0)}
+                                                className="settings-input"
+                                            />
                                         </div>
-                                        <div className="text-xs text-muted-foreground mt-1">Affiche un badge "POPULAIRE" sur cette offre pour attirer l'attention.</div>
-                                    </div>
-                                </label>
-
-                                <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
-                                    <input
-                                        type="checkbox"
-                                        className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                                        checked={!!formData.features.chatHistory}
-                                        onChange={e => updateFeature('chatHistory', e.target.checked)}
-                                    />
-                                    <div>
-                                        <div className="text-sm font-medium flex items-center gap-2">
-                                            <Plus className="w-4 h-4 text-cyan-500" />
-                                            Historique des discussions IA
+                                        <div className="space-y-2 col-span-2 pt-2 border-t border-white/5">
+                                            <label className="text-sm font-medium flex items-center gap-2">
+                                                <GraduationCap className="w-4 h-4 text-primary" />
+                                                Nombre de cours autorisés
+                                            </label>
+                                            <Input
+                                                required
+                                                type="number"
+                                                value={formData.features.courses as any}
+                                                onChange={e => updateFeature('courses', parseInt(e.target.value) || 0)}
+                                                className="settings-input"
+                                            />
+                                            <p className="text-[10px] text-muted-foreground italic">Ex: 0 (aucun), 5 (limité), -1 (illimité)</p>
                                         </div>
-                                        <div className="text-xs text-muted-foreground mt-1">Sauvegarde les conversations avec l'assistant IA.</div>
                                     </div>
-                                </label>
+                                </div>
 
-                                <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 opacity-50 grayscale cursor-not-allowed">
-                                    <input
-                                        type="checkbox"
-                                        disabled
-                                        className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                                        checked={!!formData.features.aiTools}
-                                    />
-                                    <div>
-                                        <div className="text-sm font-bold">{t.pricing.plans.dialog.aiTools}</div>
-                                        <div className="text-xs text-muted-foreground mt-1 opacity-70 italic font-medium">{t.pricing.plans.dialog.comingSoon}</div>
+                                {/* Features (Toggles) */}
+                                <div className="space-y-4">
+                                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t.pricing.plans.dialog.features}</h3>
+                                    <div className="flex flex-col gap-4">
+
+                                        <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                                checked={!!formData.features.companion}
+                                                onChange={e => updateFeature('companion', e.target.checked)}
+                                            />
+                                            <div>
+                                                <div className="text-sm font-medium flex items-center gap-2">
+                                                    <BrainCircuit className="w-4 h-4 text-purple-500" />
+                                                    {t.pricing.plans.dialog.companion}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground mt-1">{t.pricing.plans.dialog.companionDesc}</div>
+                                            </div>
+                                        </label>
+
+                                        <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                                checked={!!formData.features.interviews}
+                                                onChange={e => updateFeature('interviews', e.target.checked)}
+                                            />
+                                            <div>
+                                                <div className="text-sm font-medium flex items-center gap-2">
+                                                    <BrainCircuit className="w-4 h-4 text-blue-400" />
+                                                    Simulateur & Quiz
+                                                </div>
+                                                <div className="text-xs text-muted-foreground mt-1">Autorise l'accès aux quiz interactifs et simulations d'entretiens.</div>
+                                            </div>
+                                        </label>
+
+                                        <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                                checked={!!formData.features.mindmaps}
+                                                onChange={e => updateFeature('mindmaps', e.target.checked)}
+                                            />
+                                            <div>
+                                                <div className="text-sm font-medium flex items-center gap-2">
+                                                    <BrainCircuit className="w-4 h-4 text-emerald-500" />
+                                                    Génération de Mindmaps
+                                                </div>
+                                                <div className="text-xs text-muted-foreground mt-1">Autorise l'utilisateur à créer des cartes mentales IA.</div>
+                                            </div>
+                                        </label>
+
+                                        <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                                checked={!!formData.features.roadmap}
+                                                onChange={e => updateFeature('roadmap', e.target.checked)}
+                                            />
+                                            <div>
+                                                <div className="text-sm font-medium flex items-center gap-2">
+                                                    <Rocket className="w-4 h-4 text-blue-500" />
+                                                    Génération de Roadmaps
+                                                </div>
+                                                <div className="text-xs text-muted-foreground mt-1">Autorise l'utilisateur à générer des parcours d'apprentissage IA.</div>
+                                            </div>
+                                        </label>
+
+                                        <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                                checked={!!formData.features.comparisons}
+                                                onChange={e => updateFeature('comparisons', e.target.checked)}
+                                            />
+                                            <div>
+                                                <div className="text-sm font-medium flex items-center gap-2">
+                                                    <LayoutDashboard className="w-4 h-4 text-amber-500" />
+                                                    Tableaux Comparatifs
+                                                </div>
+                                                <div className="text-xs text-muted-foreground mt-1">Autorise la création de comparaisons IA entre technologies.</div>
+                                            </div>
+                                        </label>
+
+                                        <label className="flex items-start gap-3 p-4 rounded-lg border border-primary/20 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                                checked={!!formData.features.isPopular}
+                                                onChange={e => updateFeature('isPopular', e.target.checked)}
+                                            />
+                                            <div>
+                                                <div className="text-sm font-bold flex items-center gap-2 text-primary">
+                                                    <Rocket className="w-4 h-4" />
+                                                    Badge "Populaire"
+                                                </div>
+                                                <div className="text-xs text-muted-foreground mt-1">Affiche un badge "POPULAIRE" on cette offre pour attirer l'attention.</div>
+                                            </div>
+                                        </label>
+
+                                        <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                                checked={!!formData.features.agenda}
+                                                onChange={e => updateFeature('agenda', e.target.checked)}
+                                            />
+                                            <div>
+                                                <div className="text-sm font-medium flex items-center gap-2">
+                                                    <BrainCircuit className="w-4 h-4 text-orange-500" />
+                                                    {t.pricing.plans.dialog.agenda}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground mt-1">{t.pricing.plans.dialog.agendaDesc}</div>
+                                            </div>
+                                        </label>
+
+                                        <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                                checked={!!formData.features.chatHistory}
+                                                onChange={e => updateFeature('chatHistory', e.target.checked)}
+                                            />
+                                            <div>
+                                                <div className="text-sm font-medium flex items-center gap-2">
+                                                    <Plus className="w-4 h-4 text-cyan-500" />
+                                                    Historique des discussions IA
+                                                </div>
+                                                <div className="text-xs text-muted-foreground mt-1">Sauvegarde les conversations avec l'assistant IA.</div>
+                                            </div>
+                                        </label>
                                     </div>
-                                </label>
-
-                            </div>
-                        </div>
+                                </div>
+                            </>
+                        )}
 
                     </form>
                 </div>

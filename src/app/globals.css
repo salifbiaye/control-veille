@@ -169,6 +169,7 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  color-scheme: dark;
 }
 
 /* ── CSS variables thème ── */
@@ -536,6 +537,18 @@
   ::selection {
     background: var(--color-accent-primary-bg);
     color: var(--page-fg);
+  }
+
+  /* Hide number input spinners for a cleaner, premium look */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
   }
 }
 
@@ -1557,7 +1570,7 @@ body:has([data-nextstep-overlay]) {
 
   /* ── Premium Layout Containers ── */
   .page-container {
-    @apply mx-auto w-full max-w-[125rem] px-4 sm:px-6 lg:px-8 py-6 lg:py-8;
+    @apply mx-auto w-full max-w-[140rem] px-4 sm:px-6 lg:px-8 py-6 lg:py-8;
   }
 
   /* ── Premium Stat Card ── */
@@ -1730,7 +1743,13 @@ body:has([data-nextstep-overlay]) {
 .pulse-dot {
   animation: pulse-dot-anim 2s ease-in-out infinite;
 }
+
 @keyframes slideInRight {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
 }
