@@ -1,7 +1,9 @@
 import { CreditCard, Tag, Check, X as XIcon, Edit, Trash2, Zap, LayoutGrid, Rocket, Info } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { getPlans, getPromotions } from '@/features/pricing/actions/pricing.actions'
+import { syncAllPlansFromStripe } from '@/features/pricing/actions/sync.actions'
 import { CreatePlanDialog } from '@/features/pricing/components/CreatePlanDialog'
+import { SyncStripeButton } from '@/features/pricing/components/SyncStripeButton'
 import { DeletePlanButton } from '@/features/pricing/components/DeletePlanButton'
 import { PageHero } from '@/components/ui/PageHero'
 import { Button } from '@/components/ui/button'
@@ -79,6 +81,7 @@ export default async function PricingPage() {
             <div className="flex items-center gap-3">
               {canEditPlans && (
                 <>
+                  <SyncStripeButton />
                   {plans.find((p: any) => p.monthlyPrice === 0 && p.yearlyPrice === 0) ? (
                     <CreatePlanDialog
                       initialData={plans.find((p: any) => p.monthlyPrice === 0 && p.yearlyPrice === 0) as any}
@@ -202,11 +205,11 @@ export default async function PricingPage() {
 
                   {canEditPlans && (
                     <div className="flex items-center gap-2 mt-auto pt-4 border-t border-[var(--glass-border)]">
-                      {(!plan.stripeMonthlyPriceId && !plan.stripeYearlyPriceId) && (
+                      {canEditPlans && (
                         <div className="flex-1">
                           <CreatePlanDialog
                             initialData={plan as any}
-                            triggerLabel={plan.monthlyPrice === 0 ? "Configurer le Pack Gratuit" : "Modifier le Plan"}
+                            triggerLabel={plan.stripeMonthlyPriceId ? "Gérer l'Offre & Trial" : (plan.monthlyPrice === 0 ? "Configurer le Pack Gratuit" : "Modifier le Plan")}
                             triggerVariant="outline"
                           />
                         </div>

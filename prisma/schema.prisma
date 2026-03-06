@@ -84,6 +84,7 @@ model Plan {
   stripeMonthlyPriceId String?        @unique
   stripeYearlyPriceId  String?        @unique
   stripeProductId      String?
+  trialPeriodDays      Int?           @default(0)
   subscriptions   Subscription[]
   promotions      Promotion[]
 

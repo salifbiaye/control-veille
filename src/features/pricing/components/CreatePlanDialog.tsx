@@ -47,6 +47,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
         yearlyPrice: initialData?.yearlyPrice ?? (defaultYearlyPrice ?? 0),
         isActive: initialData?.isActive ?? true,
         sortOrder: initialData?.sortOrder || 0,
+        trialDays: initialData?.trialPeriodDays ?? 0,
         features: {
             ...DEFAULT_FEATURES,
             ...(initialData?.features || {})
@@ -63,6 +64,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                 yearlyPrice: initialData.yearlyPrice ?? 0,
                 isActive: initialData.isActive ?? true,
                 sortOrder: initialData.sortOrder || 0,
+                trialDays: initialData.trialPeriodDays ?? 0,
                 features: {
                     ...DEFAULT_FEATURES,
                     ...(initialData.features || {})
@@ -76,6 +78,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                 yearlyPrice: defaultYearlyPrice ?? 0,
                 isActive: true,
                 sortOrder: 0,
+                trialDays: 0,
                 features: DEFAULT_FEATURES
             })
         }
@@ -140,8 +143,12 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                             <CreditCard className="w-5 h-5 text-primary" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold tracking-tight">{initialData ? t.pricing.plans.dialog.titleEdit : t.pricing.plans.dialog.titleNew}</h2>
-                            <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-semibold opacity-70">{t.pricing.plans.dialog.subtitle}</p>
+                            <h2 className="text-xl font-bold tracking-tight">
+                                {initialData?.stripeMonthlyPriceId ? "Gérer l'Offre & Trial" : (initialData ? t.pricing.plans.dialog.titleEdit : t.pricing.plans.dialog.titleNew)}
+                            </h2>
+                            <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-semibold opacity-70">
+                                {initialData?.stripeMonthlyPriceId ? "Configuration des limites et période d'essai" : t.pricing.plans.dialog.subtitle}
+                            </p>
                         </div>
                     </div>
                     <Button
@@ -172,6 +179,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <label className="text-sm font-medium">{t.pricing.plans.dialog.name}</label>
                                     <Input
                                         required
+                                        disabled={!!initialData?.stripeMonthlyPriceId}
                                         value={formData.name}
                                         onChange={e => setFormData({ ...formData, name: e.target.value, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
                                         placeholder="ex: Pro, Enterprise..."
@@ -182,6 +190,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <label className="text-sm font-medium">{t.pricing.plans.dialog.slug}</label>
                                     <Input
                                         required
+                                        disabled={!!initialData?.stripeMonthlyPriceId}
                                         value={formData.slug}
                                         onChange={e => setFormData({ ...formData, slug: e.target.value })}
                                         placeholder="pro-monthly"
@@ -194,6 +203,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <label className="text-sm font-medium">Prix Mensuel (centimes)</label>
                                     <Input
                                         required
+                                        disabled={!!initialData?.stripeMonthlyPriceId}
                                         type="number"
                                         min={0}
                                         value={formData.monthlyPrice}
@@ -207,6 +217,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <label className="text-sm font-medium">Prix Annuel (centimes)</label>
                                     <Input
                                         required
+                                        disabled={!!initialData?.stripeMonthlyPriceId}
                                         type="number"
                                         min={0}
                                         value={formData.yearlyPrice}
@@ -216,6 +227,21 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     />
                                     <p className="text-xs text-muted-foreground">{formData.yearlyPrice / 100} € / an</p>
                                 </div>
+                            </div>
+                            <div className="space-y-2 pt-2">
+                                <label className="text-sm font-bold text-primary flex items-center gap-2">
+                                    <Rocket className="w-4 h-4" />
+                                    Période d'essai (jours)
+                                </label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    max={30}
+                                    value={formData.trialDays}
+                                    onChange={e => setFormData({ ...formData, trialDays: parseInt(e.target.value) || 0 })}
+                                    className="settings-input border-primary/30 focus:border-primary"
+                                />
+                                <p className="text-xs text-muted-foreground">L'utilisateur ne sera pas débité pendant cette période.</p>
                             </div>
                         </div>
 

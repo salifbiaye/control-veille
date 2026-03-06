@@ -22,6 +22,7 @@ export type PlanData = {
     features: PlanFeatures
     isActive: boolean
     sortOrder: number
+    trialDays?: number
 }
 
 export type PromotionData = {
@@ -45,6 +46,15 @@ export async function getPlans() {
             orderBy: { sortOrder: 'asc' },
         })
 
+        // Count users who have NO subscription at all
+        const usersWithoutSubscription = await prisma.user.count({
+            where: {
+                subscription: {
+                    is: null
+                }
+            }
+        })
+
         // Manual count for active subscriptions to ensure precision
         const plansWithCounts = await Promise.all(plans.map(async (plan) => {
             const activeCount = await prisma.subscription.count({
@@ -53,10 +63,15 @@ export async function getPlans() {
                     status: 'active'
                 }
             })
+
+            // If it's a FREE plan, add the ghosts (users without sub record)
+            const isFree = plan.monthlyPrice === 0 && plan.yearlyPrice === 0
+            const totalDisplayCount = isFree ? activeCount + usersWithoutSubscription : activeCount
+
             return {
                 ...plan,
                 _count: {
-                    subscriptions: activeCount
+                    subscriptions: totalDisplayCount
                 }
             }
         }))
@@ -91,13 +106,14 @@ export async function createPlan(data: PlanData) {
 export async function updatePlan(id: string, data: Partial<PlanData>) {
     try {
         await requirePermission('EDIT_PLANS')
-        const { monthlyPrice, yearlyPrice, features, ...rest } = data
+        const { monthlyPrice, yearlyPrice, features, trialDays, ...rest } = data
         const plan = await prisma.plan.update({
             where: { id },
             data: {
                 ...rest,
                 monthlyPrice,
                 yearlyPrice,
+                trialPeriodDays: trialDays,
                 features: features ? (features as any) : undefined,
             }
         })
