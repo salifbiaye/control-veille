@@ -48,12 +48,18 @@ export async function getPlans() {
         })
 
         const totalUsers = await prisma.user.count({
-            where: { role: 'USER' }
+            where: {
+                role: 'USER',
+                isPremiumLifetime: false
+            }
         })
         const activeSubscriptionsTotal = await prisma.subscription.count({
             where: {
                 status: 'active',
-                user: { role: 'USER' }
+                user: {
+                    role: 'USER',
+                    isPremiumLifetime: false
+                }
             }
         })
 
@@ -63,7 +69,10 @@ export async function getPlans() {
                 where: {
                     planId: plan.id,
                     status: 'active',
-                    user: { role: 'USER' }
+                    user: {
+                        role: 'USER',
+                        isPremiumLifetime: false
+                    }
                 }
             })
 

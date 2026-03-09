@@ -32,7 +32,7 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
         activeSubsLast30,
         stripeMRR,
     ] = await Promise.all([
-        // App-client users (role == USER)
+        // App-client users (role == USER) (including lifetime)
         prisma.user.count({ where: { role: 'USER' } }),
 
         // Admin users (role != USER)
@@ -120,8 +120,14 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
     })
     const freePlanName = freeManualPlan ? freeManualPlan.name : 'Gratuit'
 
-    // Add "Free" users for comparison in donut chart
-    const freeUsersCounts = Math.max(0, totalClients - totalAssigned)
+    // Add "Lifetime" users for comparison in donut chart
+    const lifetimeUsersCount = await prisma.user.count({ where: { role: 'USER', isPremiumLifetime: true } })
+    if (lifetimeUsersCount > 0) {
+        distributionMap.set('Pro (Lifetime)', lifetimeUsersCount)
+    }
+
+    // Add "Free" users for comparison (excluding assigned plans and lifetime)
+    const freeUsersCounts = Math.max(0, totalClients - totalAssigned - lifetimeUsersCount)
     if (freeUsersCounts > 0) {
         const existing = distributionMap.get(freePlanName) || 0
         distributionMap.set(freePlanName, existing + freeUsersCounts)
