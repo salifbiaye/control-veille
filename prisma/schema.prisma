@@ -72,27 +72,27 @@ model verification {
 }
 
 model Plan {
-  id              String         @id @default(cuid())
-  name            String         @unique
-  slug            String         @unique
-  monthlyPrice         Int            @default(0)
-  yearlyPrice          Int            @default(0)
+  id                   String         @id @default(cuid())
+  name                 String         @unique
+  slug                 String         @unique
   features             Json
   isActive             Boolean        @default(true)
   sortOrder            Int            @default(0)
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
+  stripeProductId      String?
+  monthlyPrice         Int            @default(0)
   stripeMonthlyPriceId String?        @unique
   stripeYearlyPriceId  String?        @unique
-  stripeProductId      String?
-  trialPeriodDays        Int?           @default(0)
+  trialPeriodDays      Int?           @default(0)
   trialPeriodDaysMonthly Int?           @default(0)
   trialPeriodDaysYearly  Int?           @default(0)
-  paddleProductId        String?
+  yearlyPrice          Int            @default(0)
+  paddleProductId      String?
   paddlePriceIdMonthly String?        @unique
   paddlePriceIdYearly  String?        @unique
-  subscriptions   Subscription[]
-  promotions      Promotion[]
+  subscriptions        Subscription[]
+  promotions           Promotion[]
 
   @@map("plans")
 }
@@ -102,13 +102,13 @@ model Subscription {
   userId               String    @unique
   planId               String
   status               String    @default("active")
-  pricePaid            Int       @default(0)
   currentPeriodEnd     DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   cancelAtPeriodEnd    Boolean   @default(false)
   stripeSubscriptionId String?   @unique
   paddleSubscriptionId String?   @unique
+  pricePaid            Int       @default(0)
   plan                 Plan      @relation(fields: [planId], references: [id])
   user                 user      @relation(fields: [userId], references: [id])
 }
@@ -150,14 +150,11 @@ model TechWatch {
   comparisons     Comparison[]
   courses         Course[]
   folders         Folder[]
-  mindMapEdges    MindMapEdge[]
-  mindMapNodes    MindMapNode[]
-  mindMapNotes    MindMapNote[]
+  mindMaps        MindMap[]
   notes           Note[]
   quickLinks      QuickLink[]
   resources       Resource[]
-  roadmapEdges    RoadmapEdge[]
-  roadmapNodes    RoadmapNode[]
+  roadmaps        Roadmap[]
   snippets        Snippet[]
   tasks           Task[]
   user            user            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -300,45 +297,80 @@ model QuickLink {
   techWatch   TechWatch @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
 }
 
-model MindMapNode {
+model MindMap {
   id          String        @id @default(cuid())
   techWatchId String
-  label       String
-  x           Float         @default(100)
-  y           Float         @default(100)
-  color       String?
-  height      Float         @default(48)
-  width       Float         @default(144)
-  edgesFrom   MindMapEdge[] @relation("EdgeFrom")
-  edgesTo     MindMapEdge[] @relation("EdgeTo")
+  name        String        @default("Ma Mind Map")
+  isPinned    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
   techWatch   TechWatch     @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+  nodes       MindMapNode[]
+  edges       MindMapEdge[]
+  notes       MindMapNote[]
+
+  @@index([techWatchId])
+}
+
+model MindMapNode {
+  id        String        @id @default(cuid())
+  mindMapId String
+  label     String
+  x         Float         @default(100)
+  y         Float         @default(100)
+  color     String?
+  height    Float         @default(48)
+  width     Float         @default(144)
+  edgesFrom MindMapEdge[] @relation("EdgeFrom")
+  edgesTo   MindMapEdge[] @relation("EdgeTo")
+  mindMap   MindMap       @relation(fields: [mindMapId], references: [id], onDelete: Cascade)
+
+  @@index([mindMapId])
 }
 
 model MindMapEdge {
-  id          String      @id @default(cuid())
-  techWatchId String
-  sourceId    String
-  targetId    String
-  source      MindMapNode @relation("EdgeFrom", fields: [sourceId], references: [id], onDelete: Cascade)
-  target      MindMapNode @relation("EdgeTo", fields: [targetId], references: [id], onDelete: Cascade)
-  techWatch   TechWatch   @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+  id        String      @id @default(cuid())
+  mindMapId String
+  sourceId  String
+  targetId  String
+  source    MindMapNode @relation("EdgeFrom", fields: [sourceId], references: [id], onDelete: Cascade)
+  target    MindMapNode @relation("EdgeTo", fields: [targetId], references: [id], onDelete: Cascade)
+  mindMap   MindMap     @relation(fields: [mindMapId], references: [id], onDelete: Cascade)
+
+  @@index([mindMapId])
 }
 
 model MindMapNote {
-  id          String    @id @default(cuid())
+  id        String  @id @default(cuid())
+  mindMapId String
+  label     String
+  x         Float   @default(100)
+  y         Float   @default(100)
+  width     Float   @default(400)
+  height    Float   @default(300)
+  color     String?
+  mindMap   MindMap @relation(fields: [mindMapId], references: [id], onDelete: Cascade)
+
+  @@index([mindMapId])
+}
+
+model Roadmap {
+  id          String        @id @default(cuid())
   techWatchId String
-  label       String
-  x           Float     @default(100)
-  y           Float     @default(100)
-  width       Float     @default(400)
-  height      Float     @default(300)
-  color       String?
-  techWatch   TechWatch @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+  name        String        @default("Mon Roadmap")
+  isPinned    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  techWatch   TechWatch     @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+  nodes       RoadmapNode[]
+  edges       RoadmapEdge[]
+
+  @@index([techWatchId])
 }
 
 model RoadmapNode {
   id           String        @id @default(cuid())
-  techWatchId  String
+  roadmapId    String
   label        String
   description  String?
   x            Float         @default(200)
@@ -349,22 +381,27 @@ model RoadmapNode {
   masteryScore Int           @default(0)
   notes        String?
   color        String?
+  dueDate      DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @default(now())
   edgesFrom    RoadmapEdge[] @relation("RFrom")
   edgesTo      RoadmapEdge[] @relation("RTo")
-  techWatch    TechWatch     @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+  roadmap      Roadmap       @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+
+  @@index([roadmapId])
 }
 
 model RoadmapEdge {
-  id          String      @id @default(cuid())
-  techWatchId String
-  sourceId    String
-  targetId    String
-  type        String      @default("prerequisite")
-  source      RoadmapNode @relation("RFrom", fields: [sourceId], references: [id], onDelete: Cascade)
-  target      RoadmapNode @relation("RTo", fields: [targetId], references: [id], onDelete: Cascade)
-  techWatch   TechWatch   @relation(fields: [techWatchId], references: [id], onDelete: Cascade)
+  id        String      @id @default(cuid())
+  roadmapId String
+  sourceId  String
+  targetId  String
+  type      String      @default("prerequisite")
+  source    RoadmapNode @relation("RFrom", fields: [sourceId], references: [id], onDelete: Cascade)
+  target    RoadmapNode @relation("RTo", fields: [targetId], references: [id], onDelete: Cascade)
+  roadmap   Roadmap     @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+
+  @@index([roadmapId])
 }
 
 model Note {
@@ -424,13 +461,13 @@ model AiConfig {
   userId         String   @unique
   provider       String   @default("groq")
   apiKey         String
-  baseUrl        String?
   model          String   @default("llama-3.3-70b-versatile")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @default(now())
   searchApiKey   String?
   searchProvider String?
   youtubeApiKey  String?
+  baseUrl        String?
 }
 
 model Course {

@@ -3,35 +3,55 @@ const { PrismaPg } = require('@prisma/adapter-pg')
 const pg = require('pg')
 require('dotenv').config()
 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+
 async function main() {
-    const connectionString = process.env.DATABASE_URL
-    const pool = new pg.Pool({ connectionString })
+    const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL
+    const pool = new pg.Pool({
+        connectionString,
+        ssl: { rejectUnauthorized: false }
+    })
     const adapter = new PrismaPg(pool)
     const prisma = new PrismaClient({ adapter })
 
-    console.log('🌱 Starting Seeding (CJS)...')
+    console.log('🌱 Starting Admin Seeding...')
+
+    // Aggressive Cleanup (Same as app-client)
+    console.log('🧹 Cleaning up database...')
+    await prisma.quickLink.deleteMany()
+    await prisma.resource.deleteMany()
+    await prisma.timelineEntry.deleteMany()
+    await prisma.task.deleteMany()
+    await prisma.article.deleteMany()
+    await prisma.techWatch.deleteMany()
+    await prisma.verification.deleteMany()
+    await prisma.session.deleteMany()
+    await prisma.account.deleteMany()
+    await prisma.subscription.deleteMany()
+    await prisma.plan.deleteMany()
+    await prisma.user.deleteMany()
 
     // 1. Create Super Admin
     const superAdminEmail = 'goldlif94@gmail.com'
-    const superAdmin = await prisma.user.upsert({
-        where: { email: superAdminEmail },
-        update: {
-            role: 'SUPER_ADMIN',
-        },
-        create: {
+    const superAdmin = await prisma.user.create({
+        data: {
+            id: 'super-admin-001',
             email: superAdminEmail,
             name: 'Super Admin',
             role: 'SUPER_ADMIN',
+            createdAt: new Date(),
+            updatedAt: new Date(),
         },
     })
-    console.log(`✅ Super Admin ready: ${superAdmin.email}`)
+    console.log(`✅ Super Admin created: ${superAdmin.email}`)
 
     // 2. Create Initial Plans
     const plans = [
         {
             name: 'Free',
             slug: 'free',
-            price: 0,
+            monthlyPrice: 0,
+            yearlyPrice: 0,
             features: {
                 techLimit: 3,
                 aiAssistant: false,
@@ -43,7 +63,8 @@ async function main() {
         {
             name: 'Pro',
             slug: 'pro',
-            price: 1900,
+            monthlyPrice: 1900,
+            yearlyPrice: 19000,
             features: {
                 techLimit: 10,
                 aiAssistant: true,
@@ -55,7 +76,8 @@ async function main() {
         {
             name: 'Enterprise',
             slug: 'enterprise',
-            price: 4900,
+            monthlyPrice: 4900,
+            yearlyPrice: 49000,
             features: {
                 techLimit: 100,
                 aiAssistant: true,
@@ -66,11 +88,9 @@ async function main() {
         }
     ]
 
-    for (const plan of plans) {
-        await prisma.plan.upsert({
-            where: { slug: plan.slug },
-            update: plan,
-            create: plan,
+    for (const planData of plans) {
+        await prisma.plan.create({
+            data: planData
         })
     }
     console.log('✅ Plans seeded successfully')
