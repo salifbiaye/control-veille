@@ -26,6 +26,7 @@ interface TechWatch {
     description: string | null
     iconEmoji: string | null
     color: string | null
+    logoUrl: string | null
     createdAt: Date
     updatedAt: Date
     user: {
@@ -48,6 +49,7 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
     const [deleteId, setDeleteId] = useState<string | null>(null)
     const [selectedTW, setSelectedTW] = useState<TechWatch | null>(null)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
+    const [logoErrors, setLogoErrors] = useState<Record<string, boolean>>({})
 
     useEffect(() => {
         getAnalyticsStats().then(stats => {
@@ -109,7 +111,7 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
                         <p className="text-sm text-muted-foreground mt-1">{t.techwatches.description}</p>
                     </div>
 
-                    <div className="relative w-full max-w-sm group">
+                    <div className="relative w-full max-sm group">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground transition-colors group-focus-within:text-primary pointer-events-none" />
                         <input
                             type="text"
@@ -147,9 +149,20 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
                                     <tr key={tw.id} className="group">
                                         <td>
                                             <div className="flex items-center gap-3">
-                                                <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-inner border border-white/5" style={{ backgroundColor: tw.color || 'var(--brand)' }}>
-                                                    <span className="text-lg">{tw.iconEmoji || '📦'}</span>
-                                                </div>
+                                                {tw.logoUrl && !logoErrors[tw.id] ? (
+                                                    <div className="flex-shrink-0 w-10 h-10 rounded-xl overflow-hidden border border-white/10 bg-white/5 shadow-inner">
+                                                        <img
+                                                            src={tw.logoUrl}
+                                                            alt={tw.name ?? ""}
+                                                            className="w-full h-full object-cover"
+                                                            onError={() => setLogoErrors(prev => ({ ...prev, [tw.id]: true }))}
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-inner border border-white/5" style={{ backgroundColor: tw.color || 'var(--brand)' }}>
+                                                        <span className="text-lg">{tw.iconEmoji || '📦'}</span>
+                                                    </div>
+                                                )}
                                                 <div>
                                                     <div className="font-bold text-[var(--page-fg)] flex items-center gap-2">
                                                         {tw.name}
@@ -169,7 +182,7 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
                                                     )}
                                                 </Avatar>
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-medium text-slate-200">{tw.user?.name || '—'}</span>
+                                                    <span className="text-sm font-medium text-[var(--page-fg)]">{tw.user?.name || '—'}</span>
                                                     <span className="text-[10px] text-muted-foreground">{tw.user?.email}</span>
                                                 </div>
                                             </div>
@@ -182,7 +195,7 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
                                                             <FileText className="w-3 h-3" /> {tw._count.articles}
                                                         </Badge>
                                                     ) : (
-                                                        <span className="text-[10px] text-slate-600 font-mono">0 art.</span>
+                                                        <span className="text-[10px] text-muted-foreground opacity-60 font-mono">0 art.</span>
                                                     )}
                                                 </div>
                                                 <div className="flex flex-col items-center" title="Tâches">
@@ -191,7 +204,7 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
                                                             <CheckCircle2 className="w-3 h-3" /> {tw._count.tasks}
                                                         </Badge>
                                                     ) : (
-                                                        <span className="text-[10px] text-slate-600 font-mono">0 task</span>
+                                                        <span className="text-[10px] text-muted-foreground opacity-60 font-mono">0 task</span>
                                                     )}
                                                 </div>
                                                 <div className="flex flex-col items-center" title="Ressources">
@@ -200,7 +213,7 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
                                                             <Folder className="w-3 h-3" /> {tw._count.resources}
                                                         </Badge>
                                                     ) : (
-                                                        <span className="text-[10px] text-slate-600 font-mono">0 res.</span>
+                                                        <span className="text-[10px] text-muted-foreground opacity-60 font-mono">0 res.</span>
                                                     )}
                                                 </div>
                                             </div>
@@ -208,10 +221,10 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
                                         <td>
                                             <div className="flex flex-col gap-0.5">
                                                 <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-                                                    <Activity className="w-3 h-3 text-slate-400" />
-                                                    {t.techwatches.table.created}: <span className="text-slate-300 font-medium">{new Date(tw.createdAt).toLocaleDateString()}</span>
+                                                    <Activity className="w-3 h-3 text-muted-foreground" />
+                                                    {t.techwatches.table.created}: <span className="text-[var(--page-fg)] font-medium opacity-80">{new Date(tw.createdAt).toLocaleDateString()}</span>
                                                 </span>
-                                                <span className="text-[10px] text-slate-500 pl-4.5">
+                                                <span className="text-[10px] text-muted-foreground opacity-60 pl-4.5">
                                                     {t.techwatches.table.updated}: {new Date(tw.updatedAt).toLocaleDateString()}
                                                 </span>
                                             </div>
@@ -219,7 +232,7 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
                                         <td className="text-right">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-white/5 data-[state=open]:bg-white/5">
+                                                    <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-[var(--glass-hover)] data-[state=open]:bg-[var(--glass-hover)]">
                                                         <span className="sr-only">Open menu</span>
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>

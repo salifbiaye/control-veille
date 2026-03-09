@@ -45,7 +45,16 @@ export async function getDashboardStats() {
     prisma.techWatch.findMany({
       take: 5,
       orderBy: { createdAt: 'desc' },
-      select: { id: true, name: true, createdAt: true, user: { select: { name: true, email: true } }, _count: { select: { articles: true, tasks: true } } }
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        logoUrl: true,
+        iconEmoji: true,
+        color: true,
+        user: { select: { name: true, email: true } },
+        _count: { select: { articles: true, tasks: true } }
+      }
     })
   ])
 

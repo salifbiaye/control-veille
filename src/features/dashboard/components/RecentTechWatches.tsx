@@ -1,3 +1,5 @@
+'use client'
+
 import { formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Database } from 'lucide-react'
@@ -7,6 +9,9 @@ interface RecentTechWatchesProps {
     techWatches: Array<{
         id: string
         name: string
+        logoUrl: string | null
+        iconEmoji: string | null
+        color: string | null
         createdAt: Date
         user: { name: string | null }
         _count: { articles: number; tasks: number }
@@ -40,15 +45,39 @@ export function RecentTechWatches({ techWatches }: RecentTechWatchesProps) {
                         <tbody>
                             {techWatches.map((tw) => (
                                 <tr key={tw.id}>
-                                    <td className="font-medium text-[var(--page-fg)] truncate max-w-[200px]">
-                                        {tw.name}
+                                    <td className="py-3">
+                                        <div className="flex items-center gap-3">
+                                            {tw.logoUrl ? (
+                                                <div className="flex-shrink-0 w-8 h-8 rounded-lg overflow-hidden border border-white/10 bg-white/5 shadow-inner">
+                                                    <img
+                                                        src={tw.logoUrl}
+                                                        alt={tw.name}
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            (e.target as HTMLImageElement).style.display = 'none';
+                                                            (e.target as HTMLImageElement).parentElement?.classList.add('fallback-mode');
+                                                        }}
+                                                    />
+                                                    <div className="hidden fallback-mode-content w-full h-full items-center justify-center text-xs" style={{ backgroundColor: tw.color || 'var(--brand)' }}>
+                                                        <span>{tw.iconEmoji || '📦'}</span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center shadow-inner border border-white/5 text-xs" style={{ backgroundColor: tw.color || 'var(--brand)' }}>
+                                                    <span>{tw.iconEmoji || '📦'}</span>
+                                                </div>
+                                            )}
+                                            <span className="font-medium text-[var(--page-fg)] truncate max-w-[160px]">
+                                                {tw.name}
+                                            </span>
+                                        </div>
                                     </td>
                                     <td>
-                                        <div className="text-xs">{tw.user.name || 'Inconnu'}</div>
+                                        <div className="text-xs text-[var(--page-fg)] opacity-80">{tw.user.name || 'Inconnu'}</div>
                                     </td>
                                     <td className="text-center font-mono text-xs">{tw._count.articles}</td>
                                     <td className="text-center font-mono text-xs">{tw._count.tasks}</td>
-                                    <td className="text-right text-xs text-muted-foreground whitespace-nowrap">
+                                    <td className="text-right text-xs text-muted-foreground whitespace-nowrap opacity-80">
                                         {formatDistanceToNow(new Date(tw.createdAt), { addSuffix: true, locale: fr })}
                                     </td>
                                 </tr>
