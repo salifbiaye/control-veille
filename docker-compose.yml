@@ -12,10 +12,23 @@ services:
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - PADDLE_API_KEY=${PADDLE_API_KEY}
       - PADDLE_ENVIRONMENT=${PADDLE_ENVIRONMENT:-sandbox}
-    # Aucun port exposé — accès uniquement via Twingate (my_external_network)
+    # Aucun port exposé — accès uniquement via Twingate
     networks:
-      - my_external_network
+      - internal
+
+  twingate:
+    image: twingate/connector:latest
+    container_name: twingate-connector
+    restart: unless-stopped
+    environment:
+      - TWINGATE_NETWORK=${TWINGATE_NETWORK}
+      - TWINGATE_ACCESS_TOKEN=${TWINGATE_ACCESS_TOKEN}
+      - TWINGATE_REFRESH_TOKEN=${TWINGATE_REFRESH_TOKEN}
+    sysctls:
+      - net.ipv4.ping_group_range=0 2147483647
+    networks:
+      - internal
 
 networks:
-  my_external_network:
-    external: true
+  internal:
+    driver: bridge
