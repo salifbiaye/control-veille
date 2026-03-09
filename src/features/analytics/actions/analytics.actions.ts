@@ -40,25 +40,38 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
 
         // Subscriptions with plan (for analytics charts)
         prisma.subscription.findMany({
-            where: { status: 'active' },
+            where: {
+                status: 'active',
+                user: { role: 'USER' }
+            },
             include: { plan: true }
         }),
 
         // New client users last 30 days
         prisma.user.count({
-            where: { createdAt: { gte: thirtyDaysAgo } }
+            where: {
+                createdAt: { gte: thirtyDaysAgo },
+                role: 'USER'
+            }
         }),
 
         // New TechWatches last 30 days
         prisma.techWatch.findMany({
-            where: { createdAt: { gte: thirtyDaysAgo } },
+            where: {
+                createdAt: { gte: thirtyDaysAgo },
+                user: { role: 'USER' }
+            },
             select: { createdAt: true },
             orderBy: { createdAt: 'asc' }
         }),
 
         // New Subscriptions last 30 days
         prisma.subscription.findMany({
-            where: { createdAt: { gte: thirtyDaysAgo }, status: 'active' },
+            where: {
+                createdAt: { gte: thirtyDaysAgo },
+                status: 'active',
+                user: { role: 'USER' }
+            },
             select: { createdAt: true },
             orderBy: { createdAt: 'asc' }
         }),
@@ -69,7 +82,10 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
 
     // Get 5 most recent active subscribers with user info
     const recentSubsDocs = await prisma.subscription.findMany({
-        where: { status: 'active' },
+        where: {
+            status: 'active',
+            user: { role: 'USER' }
+        },
         orderBy: { createdAt: 'desc' },
         take: 5,
         include: {

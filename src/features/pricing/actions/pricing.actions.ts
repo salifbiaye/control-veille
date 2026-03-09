@@ -47,9 +47,14 @@ export async function getPlans() {
             orderBy: { sortOrder: 'asc' },
         })
 
-        const totalUsers = await prisma.user.count()
+        const totalUsers = await prisma.user.count({
+            where: { role: 'USER' }
+        })
         const activeSubscriptionsTotal = await prisma.subscription.count({
-            where: { status: 'active' }
+            where: {
+                status: 'active',
+                user: { role: 'USER' }
+            }
         })
 
         // Manual count for active subscriptions to ensure precision
@@ -57,7 +62,8 @@ export async function getPlans() {
             let activeCount = await prisma.subscription.count({
                 where: {
                     planId: plan.id,
-                    status: 'active'
+                    status: 'active',
+                    user: { role: 'USER' }
                 }
             })
 
