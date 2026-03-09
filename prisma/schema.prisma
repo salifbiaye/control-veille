@@ -501,6 +501,7 @@ model CourseSection {
   content  String
   order    Int
   duration Int?
+  videoUrl String?
   quizzes  CourseQuiz[]
   course   Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
