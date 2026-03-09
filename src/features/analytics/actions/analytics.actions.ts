@@ -1,8 +1,7 @@
 'use server'
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/session'
-import { stripe } from '@/lib/stripe'
-import Stripe from 'stripe'
+import { getPaymentProvider } from '@/lib/payment'
 
 export interface AnalyticsStats {
     totalClients: number
@@ -64,8 +63,8 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
             orderBy: { createdAt: 'asc' }
         }),
 
-        // Real-time MRR from Stripe
-        calculateStripeMRR()
+        // Real-time MRR from payment provider
+        getPaymentProvider().calculateMRR()
     ])
 
     // Get 5 most recent active subscribers with user info
@@ -99,10 +98,17 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
         totalAssigned++
     })
 
+    // Find the free plan from DB if it exists to use its name
+    const freeManualPlan = await prisma.plan.findFirst({
+        where: { monthlyPrice: 0, yearlyPrice: 0, stripeMonthlyPriceId: null, paddlePriceIdMonthly: null }
+    })
+    const freePlanName = freeManualPlan ? freeManualPlan.name : 'Gratuit'
+
     // Add "Free" users for comparison in donut chart
     const freeUsersCounts = Math.max(0, totalClients - totalAssigned)
     if (freeUsersCounts > 0) {
-        distributionMap.set('Gratuit', freeUsersCounts)
+        const existing = distributionMap.get(freePlanName) || 0
+        distributionMap.set(freePlanName, existing + freeUsersCounts)
     }
 
     const subscriptionsDistribution = Array.from(distributionMap.entries()).map(([name, value]) => ({
@@ -242,56 +248,4 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
     }
 }
 
-/**
- * Calculates current Monthly Recurring Revenue (MRR) from active Stripe subscriptions.
- * Accounts for monthly/yearly plans, discounts, and coupons.
- * Uses auto-pagination to handle large amounts of data.
- */
-async function calculateStripeMRR(): Promise<number> {
-    try {
-        let totalCents = 0
-
-        // Auto-pagination using for-await loop
-        for await (const sub of stripe.subscriptions.list({
-            status: 'active',
-            expand: ['data.discount', 'data.discount.coupon']
-        }) as any) {
-            // We assume 1 item per subscription in TechWatch model
-            const item = sub.items.data[0]
-            if (!item?.price) continue
-
-            const unitAmount = item.price.unit_amount || 0
-            const interval = item.price.recurring?.interval || 'month'
-            const quantity = item.quantity || 1
-
-            // Monthly base amount before discounts
-            let monthlyBase = interval === 'year'
-                ? (unitAmount * quantity) / 12
-                : (unitAmount * quantity)
-
-            // Apply discounts if present
-            const discount = (sub as any).discount
-            if (discount?.coupon) {
-                const coupon = discount.coupon as Stripe.Coupon
-                if (coupon.percent_off) {
-                    monthlyBase *= (1 - coupon.percent_off / 100)
-                } else if (coupon.amount_off) {
-                    // If the coupon is amount-off, substract it
-                    // Note: usually amount_off is also monthly or yearly depending on coupon duration
-                    const discountValue = interval === 'year'
-                        ? coupon.amount_off / 12
-                        : coupon.amount_off
-                    monthlyBase = Math.max(0, monthlyBase - discountValue)
-                }
-            }
-
-            totalCents += monthlyBase
-        }
-
-        return Math.round(totalCents)
-    } catch (error) {
-        console.error('[STRIPE_MRR] Error calculating MRR:', error)
-        return 0
-    }
-}
 

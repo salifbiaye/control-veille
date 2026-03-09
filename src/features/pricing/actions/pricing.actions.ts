@@ -47,14 +47,32 @@ export async function getPlans() {
             orderBy: { sortOrder: 'asc' },
         })
 
+        const totalUsers = await prisma.user.count()
+        const activeSubscriptionsTotal = await prisma.subscription.count({
+            where: { status: 'active' }
+        })
+
         // Manual count for active subscriptions to ensure precision
         const plansWithCounts = await Promise.all(plans.map(async (plan) => {
-            const activeCount = await prisma.subscription.count({
+            let activeCount = await prisma.subscription.count({
                 where: {
                     planId: plan.id,
                     status: 'active'
                 }
             })
+
+            // If it's a completely free manual plan, assume it acts as the default fallback
+            // for users without any active subscription.
+            const isFreeManualPlan = plan.monthlyPrice === 0 &&
+                plan.yearlyPrice === 0 &&
+                !plan.stripeMonthlyPriceId &&
+                !plan.paddlePriceIdMonthly
+
+            if (isFreeManualPlan) {
+                const usersWithoutAnySubscription = totalUsers - activeSubscriptionsTotal
+                // We add the users who have no subscription at all to this plan's count
+                activeCount += Math.max(0, usersWithoutAnySubscription)
+            }
 
             return {
                 ...plan,
@@ -129,39 +147,16 @@ export async function deletePlan(id: string) {
 // Promotions Actions
 // ─────────────────────────────────────────────────────────────
 
-import { stripe } from '@/lib/stripe'
+import { getPaymentProvider } from '@/lib/payment'
 
 export async function getPromotions() {
     try {
         await requirePermission('VIEW_PROMOTIONS')
-
-        // On récupère les codes promos depuis Stripe (qui contiennent le coupon lié)
-        const stripePromos = await stripe.promotionCodes.list({
-            active: true,
-            limit: 100,
-            expand: ['data.coupon']
-        })
-
-        const promos = stripePromos.data.map(promo => {
-            const coupon = (promo as any).coupon as import('stripe').Stripe.Coupon
-            return {
-                id: promo.id,
-                code: promo.code,
-                discountType: coupon.percent_off ? 'percentage' : 'fixed',
-                discountValue: coupon.percent_off ? coupon.percent_off : (coupon.amount_off ? coupon.amount_off : 0),
-                maxUses: promo.max_redemptions || coupon.max_redemptions || null,
-                usedCount: promo.times_redeemed,
-                expiresAt: promo.expires_at ? new Date(promo.expires_at * 1000) : (coupon.redeem_by ? new Date(coupon.redeem_by * 1000) : null),
-                isActive: promo.active,
-                // On n'a pas forcément le lien direct avec le plan local, sauf s'il est contenu dans les metadata du coupon
-                plan: null
-            }
-        })
-
+        const promos = await getPaymentProvider().getPromotions()
         return { success: true, promos }
     } catch (error) {
         console.error('[PRICING] getPromotions error:', error)
-        return { success: false, promos: [], error: 'Erreur lors de la récupération des promos depuis Stripe' }
+        return { success: false, promos: [], error: 'Erreur lors de la récupération des promos' }
     }
 }
 
@@ -174,36 +169,9 @@ export async function createPromotion(data: {
 }) {
     try {
         await requirePermission('EDIT_PROMOTIONS')
-
-        // 1. Create Coupon first
-        const couponData: import('stripe').Stripe.CouponCreateParams = {
-            name: `Promo: ${data.code}`,
-            duration: 'forever',
-        }
-
-        if (data.discountType === 'percentage') {
-            couponData.percent_off = data.discountValue
-        } else {
-            couponData.amount_off = data.discountValue
-            couponData.currency = 'eur'
-        }
-
-        if (data.maxUses) couponData.max_redemptions = data.maxUses
-        if (data.expiresAt) couponData.redeem_by = Math.floor(data.expiresAt.getTime() / 1000)
-
-        const coupon = await stripe.coupons.create(couponData)
-
-        // 2. Create Promotion Code linked to Coupon
-        await stripe.promotionCodes.create({
-            coupon: coupon.id,
-            code: data.code,
-            active: true,
-            max_redemptions: data.maxUses ?? undefined,
-            expires_at: data.expiresAt ? Math.floor(data.expiresAt.getTime() / 1000) : undefined,
-        } as any) // Cast to any because of local TS mismatch on coupon property name in some versions
-
-        revalidatePath('/dashboard/pricing')
-        return { success: true }
+        const result = await getPaymentProvider().createPromotion(data)
+        if (result.success) revalidatePath('/dashboard/pricing')
+        return result
     } catch (error: any) {
         console.error('[PRICING] createPromotion error:', error)
         return { success: false, error: error.message || 'Erreur lors de la création de la promotion' }
@@ -213,12 +181,9 @@ export async function createPromotion(data: {
 export async function deletePromotion(promoCodeId: string) {
     try {
         await requirePermission('DELETE_PROMOTIONS')
-
-        // Stripe promotion codes cannot be "deleted", only marked inactive
-        await stripe.promotionCodes.update(promoCodeId, { active: false })
-
-        revalidatePath('/dashboard/pricing')
-        return { success: true }
+        const result = await getPaymentProvider().deletePromotion(promoCodeId)
+        if (result.success) revalidatePath('/dashboard/pricing')
+        return result
     } catch (error: any) {
         console.error('[PRICING] deletePromotion error:', error)
         return { success: false, error: error.message || 'Erreur lors de la désactivation de la promotion' }

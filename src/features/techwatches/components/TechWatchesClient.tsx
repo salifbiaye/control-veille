@@ -270,8 +270,8 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
             <ConfirmModal
                 isOpen={!!deleteId}
                 variant="danger"
-                title="Supprimer la TechWatch"
-                description="Êtes-vous sûr de vouloir supprimer cette TechWatch ? Cette action est irréversible et supprimera tous les articles et tâches associés."
+                title="Supprimer la TechWatche"
+                description="Êtes-vous sûr de vouloir supprimer cette TechWatche ? Cette action est irréversible et supprimera tous les articles et tâches associés."
                 confirmLabel="Supprimer"
                 onConfirm={confirmDelete}
                 onCancel={() => setDeleteId(null)}

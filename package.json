@@ -25,6 +25,7 @@
     "@ai-sdk/google": "^1.2.22",
     "@ai-sdk/groq": "^1.2.9",
     "@ai-sdk/react": "^1.2.12",
+    "@paddle/paddle-node-sdk": "^3.6.0",
     "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "^7.4.1",
     "@radix-ui/react-avatar": "^1.1.11",

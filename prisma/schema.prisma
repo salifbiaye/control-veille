@@ -22,6 +22,7 @@ model user {
   permissions       String[]      @default([])
   role              String        @default("USER")
   stripeCustomerId  String?       @unique
+  paddleCustomerId  String?       @unique
   chatSessions      ChatSession[]
   folders           Folder[]
   resources         Resource[]
@@ -84,7 +85,12 @@ model Plan {
   stripeMonthlyPriceId String?        @unique
   stripeYearlyPriceId  String?        @unique
   stripeProductId      String?
-  trialPeriodDays      Int?           @default(0)
+  trialPeriodDays        Int?           @default(0)
+  trialPeriodDaysMonthly Int?           @default(0)
+  trialPeriodDaysYearly  Int?           @default(0)
+  paddleProductId        String?
+  paddlePriceIdMonthly String?        @unique
+  paddlePriceIdYearly  String?        @unique
   subscriptions   Subscription[]
   promotions      Promotion[]
 
@@ -102,6 +108,7 @@ model Subscription {
   updatedAt            DateTime  @updatedAt
   cancelAtPeriodEnd    Boolean   @default(false)
   stripeSubscriptionId String?   @unique
+  paddleSubscriptionId String?   @unique
   plan                 Plan      @relation(fields: [planId], references: [id])
   user                 user      @relation(fields: [userId], references: [id])
 }

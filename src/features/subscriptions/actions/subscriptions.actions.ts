@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/session'
-import { stripe } from '@/lib/stripe'
+import { getPaymentProvider } from '@/lib/payment'
 import { revalidatePath } from 'next/cache'
 
 export type SubscriptionDetails = {
@@ -10,6 +10,7 @@ export type SubscriptionDetails = {
     userId: string
     planId: string
     status: string
+    cancelAtPeriodEnd: boolean
     createdAt: Date
     currentPeriodEnd: Date | null
     planName: string
@@ -28,7 +29,7 @@ export type PaginatedResult<T> = {
 
 export async function getSubscriptions(page = 1, limit = 20): Promise<PaginatedResult<SubscriptionDetails>> {
     try {
-        await requirePermission('VIEW_ANALYTICS') // Or 'VIEW_USERS', up to authorization matrix
+        await requirePermission('VIEW_ANALYTICS')
         const skip = (page - 1) * limit
 
         const [subs, total] = await Promise.all([
@@ -49,12 +50,13 @@ export async function getSubscriptions(page = 1, limit = 20): Promise<PaginatedR
             userId: s.userId,
             planId: s.planId,
             status: s.status,
+            cancelAtPeriodEnd: s.cancelAtPeriodEnd ?? false,
             createdAt: s.createdAt,
             currentPeriodEnd: s.currentPeriodEnd,
             planName: s.plan.name,
             planPrice: (typeof s.pricePaid === 'number' && s.plan.yearlyPrice > 0 && s.pricePaid >= s.plan.yearlyPrice) ? s.plan.yearlyPrice : s.plan.monthlyPrice,
             interval: (typeof s.pricePaid === 'number' && s.plan.yearlyPrice > 0 && s.pricePaid >= s.plan.yearlyPrice) ? 'year' : 'month',
-            userName: s.user.name || '—',
+            userName: s.user.name || '-',
             userEmail: s.user.email,
             stripeSubscriptionId: s.stripeSubscriptionId,
             stripeCustomerId: s.user.stripeCustomerId
@@ -74,62 +76,33 @@ export async function getSubscriptions(page = 1, limit = 20): Promise<PaginatedR
         return { data: [], meta: { page: 1, limit, total: 0, totalPages: 0 } }
     }
 }
+
 export async function refundSubscription(subscriptionId: string) {
     try {
-        await requirePermission('EDIT_USERS') // Or dedicated permission
+        await requirePermission('EDIT_USERS')
 
-        const sub = await (prisma.subscription.findUnique as any)({
+        const sub = await prisma.subscription.findUnique({
             where: { id: subscriptionId }
         })
 
-        if (!sub?.stripeSubscriptionId) {
-            return { success: false, error: "Pas d'identifiant Stripe trouvé pour cet abonnement" }
+        if (!sub?.stripeSubscriptionId && !sub?.paddleSubscriptionId) {
+            return { success: false, error: "Pas d'identifiant de paiement trouve pour cet abonnement" }
         }
 
-        // 1. Get the latest invoice for this subscription
-        const invoices = await stripe.invoices.list({
-            subscription: sub.stripeSubscriptionId,
-            limit: 1
+        const result = await getPaymentProvider().refundSubscription({
+            stripeSubscriptionId: sub.stripeSubscriptionId,
+            paddleSubscriptionId: sub.paddleSubscriptionId,
         })
 
-        if (invoices.data.length === 0) {
-            return { success: false, error: "Aucune facture trouvée pour cet abonnement" }
-        }
-
-        const latestInvoice = invoices.data[0]
-        const paymentIntentId = (latestInvoice as any).payment_intent
-
-        if (!paymentIntentId) {
-            return { success: false, error: "Aucun paiement trouvé pour cette facture" }
-        }
-
-        // 2. Annuler l'abonnement Stripe en premier
-        try {
-            await stripe.subscriptions.update((sub as any).stripeSubscriptionId, {
-                cancel_at_period_end: false,
-            })
-            await stripe.subscriptions.cancel((sub as any).stripeSubscriptionId)
-        } catch (cancelError: any) {
-            console.error('[REFUND] Erreur lors de l’annulation de l’abonnement Stripe:', cancelError)
-            // On continue pour essayer de rembourser même si l'annulation échoue (ex: déjà annulé)
-        }
-
-        // 3. Rembourser le payment intent
-        try {
-            await stripe.refunds.create({
-                payment_intent: paymentIntentId as string,
-            })
-        } catch (refundError: any) {
-            console.error('[REFUND] Erreur lors du remboursement:', refundError)
-            // Si c'est déjà remboursé, on continue pour mettre à jour la BDD
-            if (refundError.type !== 'StripeInvalidRequestError' || !refundError.message.includes('already been refunded')) {
-                throw refundError // Remonter les autres erreurs
-            }
-        }
+        if (!result.success) return result
 
         await prisma.subscription.update({
             where: { id: subscriptionId },
-            data: { status: 'refunded' }
+            data: {
+                status: 'refunded',
+                cancelAtPeriodEnd: false,   // accès révoqué immédiatement
+                currentPeriodEnd: new Date(), // accès terminé maintenant
+            }
         })
 
         revalidatePath('/dashboard/users')

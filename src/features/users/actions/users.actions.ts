@@ -147,9 +147,9 @@ export async function getClientUsers(): Promise<ClientUser[]> {
           BOOL_OR(s."cancelAtPeriodEnd") AS "cancelAtPeriodEnd",
           MAX(p.name) AS "planName",
           COALESCE(
-            MAX((p.features->>'storage')::bigint),
-            CASE WHEN BOOL_OR(u."isPremiumLifetime") THEN (SELECT (features->>'storage')::bigint FROM "plans" WHERE slug = 'pro' LIMIT 1) ELSE NULL END,
-            (SELECT (features->>'storage')::bigint FROM "plans" WHERE slug = 'free' LIMIT 1),
+            MAX((p.features->>'storage')::numeric::bigint),
+            CASE WHEN BOOL_OR(u."isPremiumLifetime") THEN (SELECT (features->>'storage')::numeric::bigint FROM "plans" WHERE slug = 'pro' LIMIT 1) ELSE NULL END,
+            (SELECT (features->>'storage')::numeric::bigint FROM "plans" WHERE slug = 'free' LIMIT 1),
             1073741824
           ) AS "storageLimit"
         FROM "user" u
@@ -183,9 +183,9 @@ export async function getClientUserById(id: string): Promise<ClientUser | null> 
         u."isPremiumLifetime",
         MAX(p.name) AS "planName",
         COALESCE(
-          MAX((p.features->>'storage')::bigint),
-          CASE WHEN BOOL_OR(u."isPremiumLifetime") THEN (SELECT (features->>'storage')::bigint FROM "plans" WHERE slug = 'pro' LIMIT 1) ELSE NULL END,
-          (SELECT (features->>'storage')::bigint FROM "plans" WHERE slug = 'free' LIMIT 1),
+          MAX((p.features->>'storage')::numeric::bigint),
+          CASE WHEN BOOL_OR(u."isPremiumLifetime") THEN (SELECT (features->>'storage')::numeric::bigint FROM "plans" WHERE slug = 'pro' LIMIT 1) ELSE NULL END,
+          (SELECT (features->>'storage')::numeric::bigint FROM "plans" WHERE slug = 'free' LIMIT 1),
           1073741824
         ) AS "storageLimit"
       FROM "user" u

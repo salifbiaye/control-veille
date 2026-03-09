@@ -13,7 +13,7 @@ const NAV_ITEMS = [
     { label_fr: 'Utilisateurs', label_en: 'Users', href: '/dashboard/users', icon: Users },
     { label_fr: 'Analytics', label_en: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
     { label_fr: 'Plans & Promos', label_en: 'Plans & Promos', href: '/dashboard/pricing', icon: CreditCard },
-    { label_fr: 'TechWatch', label_en: 'TechWatch', href: '/dashboard/techwatches', icon: Database },
+    { label_fr: 'TechWatches', label_en: 'TechWatches', href: '/dashboard/techwatches', icon: Database },
     { label_fr: 'Paramètres', label_en: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]
 

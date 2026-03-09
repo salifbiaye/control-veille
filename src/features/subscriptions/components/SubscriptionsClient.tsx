@@ -184,8 +184,10 @@ export function SubscriptionsClient({ initial }: { initial: PaginatedResult<Subs
                                             </div>
                                         </td>
                                         <td>
-                                            {sub.status === 'active' ? (
+                                            {sub.status === 'active' && !sub.cancelAtPeriodEnd ? (
                                                 <Badge variant="outline" className="h-6 px-2.5 text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/20">{t.subscriptions.status.active}</Badge>
+                                            ) : sub.status === 'active' && sub.cancelAtPeriodEnd ? (
+                                                <Badge variant="outline" className="h-6 px-2.5 text-xs bg-orange-500/10 text-orange-400 border-orange-500/20">Annulation fin période</Badge>
                                             ) : sub.status === 'canceled' ? (
                                                 <Badge variant="outline" className="h-6 px-2.5 text-xs bg-slate-500/10 text-slate-400 border-slate-500/20">{t.subscriptions.status.canceled}</Badge>
                                             ) : (
@@ -198,8 +200,8 @@ export function SubscriptionsClient({ initial }: { initial: PaginatedResult<Subs
                                                     <span className="text-sm text-[var(--page-fg)]">
                                                         {new Date(sub.currentPeriodEnd).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US')}
                                                     </span>
-                                                    {sub.status === 'canceled' && (
-                                                        <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider font-mono">{t.subscriptions.table.expires}</span>
+                                                    {(sub.status === 'canceled' || sub.cancelAtPeriodEnd) && (
+                                                        <span className="text-[10px] uppercase font-bold text-orange-500 tracking-wider font-mono">{t.subscriptions.table.expires}</span>
                                                     )}
                                                 </div>
                                             ) : (

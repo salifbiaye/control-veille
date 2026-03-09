@@ -144,7 +144,7 @@ export default async function AnalyticsPage() {
                                 <div className="relative flex items-start justify-between">
                                     <div>
                                         <p style={{ fontSize: '9px', letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700, color: 'rgba(255,255,255,0.65)' }}>
-                                            TechWatch
+                                            TechWatches
                                         </p>
                                         <p style={{ color: '#fff', fontWeight: 800, fontSize: '13px', marginTop: '2px' }}>
                                             {a.card.name}

@@ -1,3 +1,15 @@
 DATABASE_URL="postgresql://username:password@localhost:5432/techwatch_admin"
 BETTER_AUTH_SECRET="your-secret-key-here"
 BETTER_AUTH_URL="http://localhost:3001"
+
+# ─────────────────────────────────────────────────────────────
+#  PAYMENT PROVIDER — stripe | paddle (défaut: stripe)
+# ─────────────────────────────────────────────────────────────
+PAYMENT_PROVIDER=stripe
+
+# Stripe
+STRIPE_SECRET_KEY=sk_test_...
+
+# Paddle (activer avec PAYMENT_PROVIDER=paddle)
+PADDLE_API_KEY=test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+PADDLE_ENVIRONMENT=sandbox

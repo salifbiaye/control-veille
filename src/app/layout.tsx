@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TechWatch Admin",
-  description: "Panneau d'administration TechWatch",
+  title: "TechWatches Admin",
+  description: "Panneau d'administration TechWatches",
 };
 
 export default function RootLayout({

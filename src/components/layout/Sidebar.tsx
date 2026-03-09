@@ -27,7 +27,7 @@ const navigation = [
     { name: 'Utilisateurs', href: '/dashboard/users', icon: Users, permission: 'VIEW_USERS' as const },
     { name: 'Plans & Tarifs', href: '/dashboard/pricing', icon: CreditCard, permission: 'VIEW_PLANS' as const },
     { name: 'Souscriptions', href: '/dashboard/subscriptions', icon: Receipt, permission: 'VIEW_ANALYTICS' as const },
-    { name: 'TechWatch', href: '/dashboard/techwatches', icon: Database, permission: 'VIEW_TECHWATCHES' as const },
+    { name: 'TechWatches', href: '/dashboard/techwatches', icon: Database, permission: 'VIEW_TECHWATCHES' as const },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, permission: 'VIEW_ANALYTICS' as const },
     { name: 'Paramètres', href: '/dashboard/settings', icon: Settings, permission: 'VIEW_SETTINGS' as const },
 ]
@@ -102,7 +102,7 @@ export function Sidebar({ user }: SidebarProps) {
                         <Shield className="w-4 h-4" style={{ color: BRAND_COLOR }} />
                     </div>
                     <div className={cn('min-w-0 transition-all duration-300 overflow-hidden', isMinimized ? 'max-w-0 opacity-0 group-hover:max-w-[140px] group-hover:opacity-100' : 'max-w-[140px] opacity-100')}>
-                        <p className="font-bold text-sm truncate whitespace-nowrap" style={{ color: '#F8FAFC' }}>TechWatch</p>
+                        <p className="font-bold text-sm truncate whitespace-nowrap" style={{ color: '#F8FAFC' }}>TechWatches</p>
                         <span
                             className="text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider"
                             style={{

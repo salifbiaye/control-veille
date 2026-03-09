@@ -24,8 +24,8 @@ const DEFAULT_FEATURES: PlanFeatures = {
     courses: 1,
     interviews: false,
     aiTools: false,
-    mindmaps: false,
-    roadmap: false,
+    mindmaps: 0,
+    roadmap: 0,
     comparisons: false,
     chatHistory: false,
     articles: 100,
@@ -101,6 +101,10 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
         })
     }
 
+    const isStripePlan = !!initialData?.stripeMonthlyPriceId
+    const isPaddlePlan = !!initialData?.paddlePriceIdMonthly
+    const isPaymentLocked = isStripePlan || isPaddlePlan
+
     function updateFeature(key: keyof PlanData['features'], value: number | boolean) {
         setFormData(prev => ({
             ...prev,
@@ -145,10 +149,10 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                         </div>
                         <div>
                             <h2 className="text-xl font-bold tracking-tight">
-                                {initialData?.stripeMonthlyPriceId ? "Gérer l'Offre & Trial" : (initialData ? t.pricing.plans.dialog.titleEdit : t.pricing.plans.dialog.titleNew)}
+                                {isPaddlePlan ? "Gérer l'Offre Paddle" : isStripePlan ? "Gérer l'Offre & Trial" : (initialData ? t.pricing.plans.dialog.titleEdit : t.pricing.plans.dialog.titleNew)}
                             </h2>
                             <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-semibold opacity-70">
-                                {initialData?.stripeMonthlyPriceId ? "Configuration des limites et période d'essai" : t.pricing.plans.dialog.subtitle}
+                                {isPaddlePlan ? "Prix gérés dans le dashboard Paddle" : isStripePlan ? "Configuration des limites et période d'essai" : t.pricing.plans.dialog.subtitle}
                             </p>
                         </div>
                     </div>
@@ -180,7 +184,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <label className="text-sm font-medium">{t.pricing.plans.dialog.name}</label>
                                     <Input
                                         required
-                                        disabled={!!initialData?.stripeMonthlyPriceId}
+                                        disabled={isPaymentLocked}
                                         value={formData.name}
                                         onChange={e => setFormData({ ...formData, name: e.target.value, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
                                         placeholder="ex: Pro, Enterprise..."
@@ -191,7 +195,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <label className="text-sm font-medium">{t.pricing.plans.dialog.slug}</label>
                                     <Input
                                         required
-                                        disabled={!!initialData?.stripeMonthlyPriceId}
+                                        disabled={isPaymentLocked}
                                         value={formData.slug}
                                         onChange={e => setFormData({ ...formData, slug: e.target.value })}
                                         placeholder="pro-monthly"
@@ -204,7 +208,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <label className="text-sm font-medium">Prix Mensuel (centimes)</label>
                                     <Input
                                         required
-                                        disabled={!!initialData?.stripeMonthlyPriceId}
+                                        disabled={isPaymentLocked}
                                         type="number"
                                         min={0}
                                         value={formData.monthlyPrice}
@@ -218,7 +222,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <label className="text-sm font-medium">Prix Annuel (centimes)</label>
                                     <Input
                                         required
-                                        disabled={!!initialData?.stripeMonthlyPriceId}
+                                        disabled={isPaymentLocked}
                                         type="number"
                                         min={0}
                                         value={formData.yearlyPrice}
@@ -229,7 +233,7 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <p className="text-xs text-muted-foreground">{formData.yearlyPrice / 100} € / an</p>
                                 </div>
                             </div>
-                            {!!initialData?.stripeMonthlyPriceId && (
+                            {isStripePlan && !isPaddlePlan && (
                                 <div className="space-y-2 pt-2">
                                     <label className="text-sm font-bold text-primary flex items-center gap-2">
                                         <Rocket className="w-4 h-4" />
@@ -246,9 +250,15 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                     <p className="text-xs text-muted-foreground">L'utilisateur ne sera pas débité pendant cette période.</p>
                                 </div>
                             )}
+                            {isPaddlePlan && (
+                                <p className="text-xs text-muted-foreground pt-2 flex items-center gap-1.5">
+                                    <Rocket className="w-3 h-3" />
+                                    Trial configuré dans le dashboard Paddle → Catalog &gt; Prices
+                                </p>
+                            )}
                         </div>
 
-                        {!initialData?.stripeMonthlyPriceId && (
+                        {!isPaymentLocked && (
                             <>
                                 {/* Limites d'usage */}
                                 <div className="space-y-4">
@@ -377,37 +387,35 @@ export function CreatePlanDialog({ initialData, triggerLabel, triggerVariant = "
                                             </div>
                                         </label>
 
-                                        <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
-                                            <input
-                                                type="checkbox"
-                                                className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                                                checked={!!formData.features.mindmaps}
-                                                onChange={e => updateFeature('mindmaps', e.target.checked)}
+                                        <div className="space-y-2 col-span-2 pt-2 border-t border-white/5">
+                                            <label className="text-sm font-medium flex items-center gap-2">
+                                                <BrainCircuit className="w-4 h-4 text-emerald-500" />
+                                                Mindmaps autorisées
+                                            </label>
+                                            <Input
+                                                required
+                                                type="number"
+                                                value={formData.features.mindmaps as any}
+                                                onChange={e => updateFeature('mindmaps', parseInt(e.target.value) || 0)}
+                                                className="settings-input"
                                             />
-                                            <div>
-                                                <div className="text-sm font-medium flex items-center gap-2">
-                                                    <BrainCircuit className="w-4 h-4 text-emerald-500" />
-                                                    Génération de Mindmaps
-                                                </div>
-                                                <div className="text-xs text-muted-foreground mt-1">Autorise l'utilisateur à créer des cartes mentales IA.</div>
-                                            </div>
-                                        </label>
+                                            <p className="text-[10px] text-muted-foreground italic">0 = désactivé, -1 = illimité, N = max N mindmaps</p>
+                                        </div>
 
-                                        <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
-                                            <input
-                                                type="checkbox"
-                                                className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                                                checked={!!formData.features.roadmap}
-                                                onChange={e => updateFeature('roadmap', e.target.checked)}
+                                        <div className="space-y-2 col-span-2 pt-2 border-t border-white/5">
+                                            <label className="text-sm font-medium flex items-center gap-2">
+                                                <Rocket className="w-4 h-4 text-blue-500" />
+                                                Roadmaps autorisés
+                                            </label>
+                                            <Input
+                                                required
+                                                type="number"
+                                                value={formData.features.roadmap as any}
+                                                onChange={e => updateFeature('roadmap', parseInt(e.target.value) || 0)}
+                                                className="settings-input"
                                             />
-                                            <div>
-                                                <div className="text-sm font-medium flex items-center gap-2">
-                                                    <Rocket className="w-4 h-4 text-blue-500" />
-                                                    Génération de Roadmaps
-                                                </div>
-                                                <div className="text-xs text-muted-foreground mt-1">Autorise l'utilisateur à générer des parcours d'apprentissage IA.</div>
-                                            </div>
-                                        </label>
+                                            <p className="text-[10px] text-muted-foreground italic">0 = désactivé, -1 = illimité, N = max N roadmaps</p>
+                                        </div>
 
                                         <label className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
                                             <input
