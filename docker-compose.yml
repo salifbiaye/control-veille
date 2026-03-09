@@ -1,32 +1,21 @@
 services:
   admin:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${DOCKER_IMAGE:-gdxebec/veille-admin:latest}
     container_name: veille-admin
     restart: unless-stopped
-    env_file: .env
     environment:
-      - BETTER_AUTH_URL=http://admin:3001
-      - NEXT_PUBLIC_BETTER_AUTH_URL=http://admin:3001
-    # Pas de "ports:" — le port n'est PAS exposé publiquement
-    # Twingate accède via le réseau interne Docker (http://admin:3001)
+      - DATABASE_URL=${DATABASE_URL}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+      - NEXT_PUBLIC_BETTER_AUTH_URL=${NEXT_PUBLIC_BETTER_AUTH_URL}
+      - PAYMENT_PROVIDER=${PAYMENT_PROVIDER:-stripe}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - PADDLE_API_KEY=${PADDLE_API_KEY}
+      - PADDLE_ENVIRONMENT=${PADDLE_ENVIRONMENT:-sandbox}
+    # Aucun port exposé — accès uniquement via Twingate (my_external_network)
     networks:
-      - internal
-
-  twingate:
-    image: twingate/connector:latest
-    container_name: twingate-connector
-    restart: unless-stopped
-    environment:
-      - TWINGATE_NETWORK=${TWINGATE_NETWORK}       # ex: mycompany.twingate.com
-      - TWINGATE_ACCESS_TOKEN=${TWINGATE_ACCESS_TOKEN}
-      - TWINGATE_REFRESH_TOKEN=${TWINGATE_REFRESH_TOKEN}
-    sysctls:
-      - net.ipv4.ping_group_range=0 2147483647
-    networks:
-      - internal
+      - my_external_network
 
 networks:
-  internal:
-    driver: bridge
+  my_external_network:
+    external: true
