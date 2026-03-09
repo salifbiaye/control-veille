@@ -269,60 +269,66 @@ export default async function AnalyticsPage() {
                                     {a.table.empty}
                                 </div>
                             ) : (
-                                stats.recentSubscribers.map((sub) => (
-                                    <div
-                                        key={sub.id}
-                                        className="grid items-center px-5 py-3.5 transition-colors cursor-default hover:bg-white/[0.04]"
-                                        style={{
-                                            gridTemplateColumns: '1fr auto auto auto',
-                                            borderBottom: '1px solid var(--glass-border)',
-                                        }}
-                                    >
-                                        {/* Asset */}
-                                        <div className="flex items-center gap-3 min-w-0 pr-2">
-                                            <Avatar className="h-8 w-8 rounded-xl flex-shrink-0"
-                                                style={{ border: '1px solid var(--glass-border)' }}>
-                                                {/* @ts-ignore */}
-                                                <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${sub.userName}&backgroundColor=7c3aed`} />
-                                                {/* @ts-ignore */}
-                                                <AvatarFallback className="rounded-xl text-[11px] font-bold">
-                                                    {sub.userName.substring(0, 2).toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="min-w-0">
-                                                <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--page-fg)' }}>
-                                                    {sub.userName}
-                                                </p>
-                                                <p className="text-[10px] truncate" style={{ color: 'var(--txt-sub)' }}>
-                                                    {sub.plan?.name || a.table.unknownPlan} · {a.table.annual}
+                                stats.recentSubscribers.map((sub) => {
+                                    const isAnnual = sub.plan && sub.pricePaid === sub.plan.yearlyPrice && sub.plan.yearlyPrice > 0
+                                    const intervalLabel = isAnnual ? a.table.annual : a.table.monthly
+                                    const displayPrice = typeof sub.pricePaid === 'number' && sub.pricePaid > 0 ? sub.pricePaid : (sub.plan?.monthlyPrice || 0)
+
+                                    return (
+                                        <div
+                                            key={sub.id}
+                                            className="grid items-center px-5 py-3.5 transition-colors cursor-default hover:bg-white/[0.04]"
+                                            style={{
+                                                gridTemplateColumns: '1fr auto auto auto',
+                                                borderBottom: '1px solid var(--glass-border)',
+                                            }}
+                                        >
+                                            {/* Asset */}
+                                            <div className="flex items-center gap-3 min-w-0 pr-2">
+                                                <Avatar className="h-8 w-8 rounded-xl flex-shrink-0"
+                                                    style={{ border: '1px solid var(--glass-border)' }}>
+                                                    {/* @ts-ignore */}
+                                                    <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${sub.userName}&backgroundColor=7c3aed`} />
+                                                    {/* @ts-ignore */}
+                                                    <AvatarFallback className="rounded-xl text-[11px] font-bold">
+                                                        {sub.userName.substring(0, 2).toUpperCase()}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div className="min-w-0">
+                                                    <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--page-fg)' }}>
+                                                        {sub.userName}
+                                                    </p>
+                                                    <p className="text-[10px] truncate" style={{ color: 'var(--txt-sub)' }}>
+                                                        {sub.plan?.name || a.table.unknownPlan} · {intervalLabel}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Code */}
+                                            <div className="px-3">
+                                                <span className="text-[10px] font-mono px-2 py-1 rounded-md whitespace-nowrap"
+                                                    style={{ background: 'var(--glass-border)', color: 'var(--txt-sub)' }}>
+                                                    {fakeCode(sub.id || sub.userName)}
+                                                </span>
+                                            </div>
+
+                                            {/* Status */}
+                                            <div className="px-3">
+                                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
+                                                    style={{ background: 'rgba(139,92,246,0.10)', color: '#8B5CF6', border: '1px solid rgba(139,92,246,0.16)' }}>
+                                                    ● {a.table.done}
+                                                </span>
+                                            </div>
+
+                                            {/* Value */}
+                                            <div className="text-right">
+                                                <p className="text-sm font-bold tabular-nums whitespace-nowrap" style={{ color: '#10B981' }}>
+                                                    +{formatCurrency(displayPrice)}
                                                 </p>
                                             </div>
                                         </div>
-
-                                        {/* Code */}
-                                        <div className="px-3">
-                                            <span className="text-[10px] font-mono px-2 py-1 rounded-md whitespace-nowrap"
-                                                style={{ background: 'var(--glass-border)', color: 'var(--txt-sub)' }}>
-                                                {fakeCode(sub.id || sub.userName)}
-                                            </span>
-                                        </div>
-
-                                        {/* Status */}
-                                        <div className="px-3">
-                                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
-                                                style={{ background: 'rgba(139,92,246,0.10)', color: '#8B5CF6', border: '1px solid rgba(139,92,246,0.16)' }}>
-                                                ● {a.table.done}
-                                            </span>
-                                        </div>
-
-                                        {/* Value */}
-                                        <div className="text-right">
-                                            <p className="text-sm font-bold tabular-nums whitespace-nowrap" style={{ color: '#10B981' }}>
-                                                +{formatCurrency(sub.plan?.monthlyPrice || 0)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))
+                                    )
+                                })
                             )}
                         </div>
                     </div>
