@@ -157,7 +157,15 @@ export class PaddleProvider implements PaymentProvider {
             trialPeriodDaysYearly: trialYearly,
         }
 
-        const existing = await prisma.plan.findFirst({ where: { paddleProductId: product.id } })
+        const existing = await prisma.plan.findFirst({
+            where: {
+                OR: [
+                    { paddleProductId: product.id },
+                    { slug: slug },
+                    { name: product.name }
+                ]
+            }
+        })
         if (existing) {
             await prisma.plan.update({ where: { id: existing.id }, data: planData })
         } else {
