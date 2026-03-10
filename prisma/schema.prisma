@@ -576,3 +576,14 @@ model Snippet {
   @@index([technology])
   @@index([techWatchId])
 }
+
+model GenerationLock {
+  id         String   @id @default(cuid())
+  userId     String
+  type       String   // 'section', 'roadmap', 'quiz'
+  resourceId String  // courseId or roadmapId
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([expiresAt])
+}
