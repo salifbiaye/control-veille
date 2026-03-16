@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+export const dynamic = 'force-dynamic'
 
 // GET /api/pricing/plans
 // PUBLIC endpoint for app-client to fetch active plans
