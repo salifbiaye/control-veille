@@ -1,16 +1,28 @@
 'use client'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-    Area, AreaChart, Bar, BarChart, CartesianGrid,
-    ResponsiveContainer, Tooltip, XAxis, YAxis
-} from "recharts"
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 import { Users, TrendingUp } from 'lucide-react'
 
 interface DashboardGrowthChartsProps {
     usersGrowth: any[]
     revenueData: any[]
 }
+
+const usersChartConfig = {
+    users: {
+        label: "Utilisateurs",
+        color: "#3b82f6",
+    },
+} satisfies ChartConfig
+
+const revenueChartConfig = {
+    total: {
+        label: "MRR",
+        color: "#8b5cf6",
+    },
+} satisfies ChartConfig
 
 export function DashboardGrowthCharts({ usersGrowth, revenueData }: DashboardGrowthChartsProps) {
     return (
@@ -29,45 +41,37 @@ export function DashboardGrowthCharts({ usersGrowth, revenueData }: DashboardGro
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="h-[240px] w-full mt-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={usersGrowth}>
-                                <defs>
-                                    <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                                <XAxis
-                                    dataKey="date"
-                                    stroke="rgba(255,255,255,0.4)"
-                                    fontSize={10}
-                                    tickLine={false}
-                                    axisLine={false}
-                                    minTickGap={20}
-                                />
-                                <YAxis
-                                    stroke="rgba(255,255,255,0.4)"
-                                    fontSize={10}
-                                    tickLine={false}
-                                    axisLine={false}
-                                />
-                                <Tooltip
-                                    contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                                    itemStyle={{ color: '#3b82f6' }}
-                                />
-                                <Area
-                                    type="monotone"
-                                    dataKey="users"
-                                    stroke="#3b82f6"
-                                    fillOpacity={1}
-                                    fill="url(#colorUsers)"
-                                    strokeWidth={2}
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
+                    <ChartContainer config={usersChartConfig} className="h-[240px] w-full mt-4">
+                        <AreaChart data={usersGrowth}>
+                            <defs>
+                                <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                            <XAxis
+                                dataKey="date"
+                                tickLine={false}
+                                axisLine={false}
+                                fontSize={10}
+                                minTickGap={20}
+                                tick={{ fill: 'rgba(255,255,255,0.4)' }}
+                            />
+                            <ChartTooltip
+                                cursor={{ stroke: 'rgba(59,130,246,0.2)', strokeWidth: 1 }}
+                                content={<ChartTooltipContent />}
+                            />
+                            <Area
+                                type="monotone"
+                                dataKey="users"
+                                stroke="#3b82f6"
+                                fillOpacity={1}
+                                fill="url(#colorUsers)"
+                                strokeWidth={2}
+                            />
+                        </AreaChart>
+                    </ChartContainer>
                 </CardContent>
             </Card>
 
@@ -85,38 +89,41 @@ export function DashboardGrowthCharts({ usersGrowth, revenueData }: DashboardGro
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="h-[240px] w-full mt-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={revenueData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                                <XAxis
-                                    dataKey="name"
-                                    stroke="rgba(255,255,255,0.4)"
-                                    fontSize={10}
-                                    tickLine={false}
-                                    axisLine={false}
-                                />
-                                <YAxis
-                                    stroke="rgba(255,255,255,0.4)"
-                                    fontSize={10}
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tickFormatter={(val) => `${val}€`}
-                                />
-                                <Tooltip
-                                    contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                                    itemStyle={{ color: '#8b5cf6' }}
-                                    formatter={(val: number | undefined) => [val ? `${val.toFixed(2)}€` : '0€', 'MRR']}
-                                />
-                                <Bar
-                                    dataKey="total"
-                                    fill="#8b5cf6"
-                                    radius={[4, 4, 0, 0]}
-                                    barSize={30}
-                                />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+                    <ChartContainer config={revenueChartConfig} className="h-[240px] w-full mt-4">
+                        <BarChart data={revenueData} barCategoryGap="30%">
+                            <defs>
+                                <linearGradient id="barMRR" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.9} />
+                                    <stop offset="100%" stopColor="#4c1d95" stopOpacity={0.5} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                            <XAxis
+                                dataKey="name"
+                                tickLine={false}
+                                axisLine={false}
+                                fontSize={10}
+                                tick={{ fill: 'rgba(255,255,255,0.4)' }}
+                            />
+                            <ChartTooltip
+                                cursor={{ fill: 'rgba(139,92,246,0.08)', radius: 6 }}
+                                content={
+                                    <ChartTooltipContent
+                                        formatter={(value) => [
+                                            `${Number(value).toFixed(2)}€`,
+                                            'MRR',
+                                        ]}
+                                    />
+                                }
+                            />
+                            <Bar
+                                dataKey="total"
+                                fill="url(#barMRR)"
+                                radius={[6, 6, 2, 2]}
+                                maxBarSize={48}
+                            />
+                        </BarChart>
+                    </ChartContainer>
                 </CardContent>
             </Card>
         </div>
