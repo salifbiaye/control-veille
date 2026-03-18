@@ -291,10 +291,19 @@ export async function banUser(userId: string, reason?: string): Promise<{ succes
 export async function unbanUser(userId: string): Promise<{ success: boolean; error?: string }> {
     try {
         await requirePermission('EDIT_USERS')
+
+        const targetUser = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } })
+
         await prisma.user.update({
             where: { id: userId },
             data: { role: 'USER' }
         })
+
+        // 📧 Email de réactivation (fail silently)
+        if (process.env.SMTP_HOST && targetUser) {
+            sendUnbanEmail({ to: targetUser.email, name: targetUser.name || undefined }).catch(() => {})
+        }
+
         revalidatePath('/dashboard/users')
         return { success: true }
     } catch (error) {

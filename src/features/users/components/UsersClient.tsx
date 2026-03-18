@@ -387,6 +387,15 @@ function ClientUsersTab({ data }: { data: ClientUser[] }) {
     const [planFilter, setPlanFilter] = useState<'all' | 'free' | 'pro' | 'premium'>('all')
     const [pending, startTransition] = useTransition()
 
+    const BAN_REASONS = [
+        'Violation des conditions d\'utilisation',
+        'Spam ou comportement abusif',
+        'Fraude ou activité suspecte',
+        'Contenu inapproprié',
+        'Compte compromis',
+        'Autre',
+    ]
+
     // Modals state
     const [actionModal, setActionModal] = useState<{
         isOpen: boolean
@@ -394,6 +403,7 @@ function ClientUsersTab({ data }: { data: ClientUser[] }) {
         userId: string
         value?: boolean
     }>({ isOpen: false, type: 'lifetime', userId: '' })
+    const [banReason, setBanReason] = useState(BAN_REASONS[0])
 
     const [refundModal, setRefundModal] = useState<{ isOpen: boolean, subscriptionId: string | null }>({
         isOpen: false,
@@ -417,7 +427,7 @@ function ClientUsersTab({ data }: { data: ClientUser[] }) {
                 const res = await unbanUser(userId)
                 if (res.success) setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: 'USER' } : u))
             } else if (type === 'ban') {
-                const res = await banUser(userId)
+                const res = await banUser(userId, banReason)
                 if (res.success) {
                     setUsers(prev => prev.map(u =>
                         u.id === userId ? { ...u, role: 'BANNED', subscriptionStatus: 'canceled' } : u
@@ -670,7 +680,32 @@ function ClientUsersTab({ data }: { data: ClientUser[] }) {
                 onConfirm={confirmAction}
                 onCancel={() => setActionModal(m => ({ ...m, isOpen: false }))}
                 isPending={pending}
-            />
+            >
+                {actionModal.type === 'ban' && (
+                    <div>
+                        <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(248,250,252,0.45)' }}>
+                            Motif du bannissement
+                        </label>
+                        <select
+                            value={banReason}
+                            onChange={e => setBanReason(e.target.value)}
+                            className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                            style={{
+                                background: 'rgba(255,255,255,0.04)',
+                                border: '1px solid rgba(239,68,68,0.25)',
+                                color: 'var(--page-fg)',
+                            }}
+                        >
+                            {BAN_REASONS.map(r => (
+                                <option key={r} value={r} style={{ background: '#1a1a1e' }}>{r}</option>
+                            ))}
+                        </select>
+                        <p className="text-[11px] mt-1.5" style={{ color: 'rgba(248,250,252,0.35)' }}>
+                            Ce motif sera inclus dans l'email envoyé à l'utilisateur.
+                        </p>
+                    </div>
+                )}
+            </ConfirmModal>
 
             <ConfirmModal
                 isOpen={refundModal.isOpen}
