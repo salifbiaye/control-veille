@@ -113,7 +113,7 @@ export function Sidebar({ user }: SidebarProps) {
                                 border: `1px solid color-mix(in srgb, ${BRAND_COLOR} 20%, transparent)`,
                             }}
                         >
-                            Admin
+                            {userRole}
                         </span>
                     </div>
                 </div>
