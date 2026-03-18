@@ -685,21 +685,21 @@ function ClientUsersTab({ data }: { data: ClientUser[] }) {
             >
                 {actionModal.type === 'ban' && (
                     <div>
-                        <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(248,250,252,0.45)' }}>
+                        <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--txt-muted)' }}>
                             Motif du bannissement
                         </label>
                         <select
                             value={banReason}
                             onChange={e => { setBanReason(e.target.value); setCustomBanReason('') }}
-                            className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                            className="w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors"
                             style={{
-                                background: 'rgba(255,255,255,0.04)',
-                                border: '1px solid rgba(239,68,68,0.25)',
+                                background: 'var(--glass-bg)',
+                                border: '1px solid var(--glass-border)',
                                 color: 'var(--page-fg)',
                             }}
                         >
                             {BAN_REASONS.map(r => (
-                                <option key={r} value={r} style={{ background: '#1a1a1e' }}>{r}</option>
+                                <option key={r} value={r} className="bg-[var(--card-bg)] text-[var(--page-fg)]">{r}</option>
                             ))}
                         </select>
                         {banReason === 'Autre' && (
@@ -708,15 +708,15 @@ function ClientUsersTab({ data }: { data: ClientUser[] }) {
                                 placeholder="Précisez le motif..."
                                 value={customBanReason}
                                 onChange={e => setCustomBanReason(e.target.value)}
-                                className="w-full rounded-lg px-3 py-2 text-sm outline-none mt-2"
+                                className="w-full rounded-lg px-3 py-2 text-sm outline-none mt-2 transition-colors"
                                 style={{
-                                    background: 'rgba(255,255,255,0.04)',
-                                    border: '1px solid rgba(239,68,68,0.25)',
+                                    background: 'var(--glass-bg)',
+                                    border: '1px solid var(--glass-border)',
                                     color: 'var(--page-fg)',
                                 }}
                             />
                         )}
-                        <p className="text-[11px] mt-1.5" style={{ color: 'rgba(248,250,252,0.35)' }}>
+                        <p className="text-[11px] mt-1.5" style={{ color: 'var(--txt-muted)' }}>
                             Ce motif sera inclus dans l'email envoyé à l'utilisateur.
                         </p>
                     </div>
