@@ -56,7 +56,7 @@ export default async function PricingPage() {
   const providerName = provider.charAt(0).toUpperCase() + provider.slice(1)
 
   const formatPrice = (price: number) => {
-    if (price === 0) return 'Gratuit'
+    if (price === 0) return t.pricing.plans.free
     return `${(price / 100).toFixed(2)}€`
   }
 
@@ -80,9 +80,9 @@ export default async function PricingPage() {
             <div>
               <h2 className="text-xl font-semibold text-[var(--page-fg)] flex items-center gap-2">
                 <LayoutGrid className="w-5 h-5 text-primary" />
-                Abonnements
+                {t.pricing.plans.sectionTitle}
               </h2>
-              <p className="text-sm text-muted-foreground mt-1">Offres actuellement synchronisées avec l'application client.</p>
+              <p className="text-sm text-muted-foreground mt-1">{t.pricing.plans.sectionDesc}</p>
             </div>
             <div className="flex items-center gap-3">
               {canEditPlans && (
@@ -91,12 +91,12 @@ export default async function PricingPage() {
                   {plans.find((p: any) => p.monthlyPrice === 0 && p.yearlyPrice === 0) ? (
                     <CreatePlanDialog
                       initialData={plans.find((p: any) => p.monthlyPrice === 0 && p.yearlyPrice === 0) as any}
-                      triggerLabel="Configurer le Pack Gratuit"
+                      triggerLabel={t.pricing.plans.configureFree}
                       triggerVariant="outline"
                     />
                   ) : (
                     <CreatePlanDialog
-                      triggerLabel="Créer Pack Gratuit"
+                      triggerLabel={t.pricing.plans.createFree}
                       triggerVariant="outline"
                       defaultMonthlyPrice={0}
                       defaultYearlyPrice={0}
@@ -120,10 +120,10 @@ export default async function PricingPage() {
             <div>
               <h2 className="text-xl font-semibold text-[var(--page-fg)] flex items-center gap-2">
                 <Tag className="w-5 h-5 text-primary" />
-                Codes Promotionnels
+                {t.pricing.promos.sectionTitle}
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Créez des remises via <span className="font-semibold text-[var(--page-fg)]">{providerName}</span> pour vos campagnes de conversion.
+                {t.pricing.promos.sectionDesc.replace('{provider}', '')} <span className="font-semibold text-[var(--page-fg)]">{providerName}</span>
               </p>
             </div>
             {canEditPromos && (
@@ -151,18 +151,18 @@ export default async function PricingPage() {
               <table className="premium-table">
                 <thead>
                   <tr>
-                    <th className="w-[20%]">Code Promo</th>
-                    <th>Valeur de la Remise</th>
-                    <th>Restriction</th>
-                    <th className="w-[30%] text-center">Utilisations (Jauge)</th>
-                    <th className="text-right">Statut</th>
+                    <th className="w-[20%]">{t.pricing.promos.table.code}</th>
+                    <th>{t.pricing.promos.table.value}</th>
+                    <th>{t.pricing.promos.table.restriction}</th>
+                    <th className="w-[30%] text-center">{t.pricing.promos.table.usage}</th>
+                    <th className="text-right">{t.pricing.promos.table.status}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {promos.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="text-center py-12 text-muted-foreground italic">
-                        Aucun code promotionnel actif.
+                        {t.pricing.promos.empty}
                       </td>
                     </tr>
                   ) : promos.map((promo: any) => {
@@ -190,14 +190,14 @@ export default async function PricingPage() {
                         </td>
                         <td>
                           <span className="text-sm font-medium text-slate-300 bg-[rgba(255,255,255,0.03)] px-2.5 py-1 rounded-md border border-[var(--glass-border)]">
-                            {promo.plan ? `Plan ${promo.plan.name}` : 'Globale'}
+                            {promo.plan ? `Plan ${promo.plan.name}` : t.pricing.promos.global}
                           </span>
                         </td>
                         <td>
                           <div className="flex flex-col gap-2 max-w-[200px] mx-auto">
                             <div className="flex items-center justify-between text-xs font-mono">
                               <span className="text-white">{promo.usedCount}</span>
-                              <span className="text-muted-foreground">/ {maxUsesInt ? maxUsesInt : 'Illimité'}</span>
+                              <span className="text-muted-foreground">/ {maxUsesInt ? maxUsesInt : t.pricing.promos.unlimited}</span>
                             </div>
                             {maxUsesInt ? (
                               <div className="h-2 w-full bg-[rgba(255,255,255,0.05)] rounded-full overflow-hidden shadow-inner">
@@ -205,7 +205,7 @@ export default async function PricingPage() {
                               </div>
                             ) : (
                               <div className="h-2 w-full bg-[rgba(255,255,255,0.02)] rounded-full overflow-hidden flex items-center justify-center">
-                                <span className="text-[8px] uppercase tracking-widest text-muted-foreground font-bold">Sans Limite</span>
+                                <span className="text-[8px] uppercase tracking-widest text-muted-foreground font-bold">{t.pricing.promos.noLimit}</span>
                               </div>
                             )}
                           </div>
@@ -213,7 +213,7 @@ export default async function PricingPage() {
                         <td className="text-right">
                           <div className="flex justify-end items-center gap-2">
                             <Badge variant="outline" className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${promo.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
-                              {promo.isActive ? 'ACTIF' : 'INACTIF'}
+                              {promo.isActive ? t.pricing.plans.active : t.pricing.plans.inactive}
                             </Badge>
                             {canEditPromos && (
                               <DeletePromoButton promoId={promo.id} promoCode={promo.code} />

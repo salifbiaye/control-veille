@@ -24,7 +24,7 @@ export function PricingTabs({ plans, canEditPlans, t, providerName = 'Stripe' }:
     const displayedPlans = activeTab === 'provider' ? providerPlans : manualPlans
 
     const formatPrice = (price: number) => {
-        if (price === 0) return 'Gratuit'
+        if (price === 0) return t.pricing.plans.free
         return `${(price / 100).toFixed(2)}€`
     }
 
@@ -53,7 +53,7 @@ export function PricingTabs({ plans, canEditPlans, t, providerName = 'Stripe' }:
                             }`}
                     >
                         <Database className="w-4 h-4" />
-                        Base de Données
+                        {t.pricing.plans.tabs.manualLabel}
                         <Badge variant="outline" className={`ml-1 px-1.5 py-0 h-5 border-0 ${activeTab === 'manual' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-white/5 text-muted-foreground'}`}>
                             {manualPlans.length}
                         </Badge>
@@ -63,8 +63,8 @@ export function PricingTabs({ plans, canEditPlans, t, providerName = 'Stripe' }:
                 <div className="flex items-center gap-2">
                     <p className="text-xs text-muted-foreground">
                         {activeTab === 'provider'
-                            ? "Plans synchronisés avec les processeurs de paiement."
-                            : "Plans créés localement pour des accès spécifiques ou gratuits."}
+                            ? t.pricing.plans.tabs.providerDesc
+                            : t.pricing.plans.tabs.manualDesc}
                     </p>
                 </div>
             </div>
@@ -74,11 +74,11 @@ export function PricingTabs({ plans, canEditPlans, t, providerName = 'Stripe' }:
                     <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                         {activeTab === 'provider' ? <CreditCard className="w-8 h-8 text-primary" /> : <Database className="w-8 h-8 text-primary" />}
                     </div>
-                    <h3 className="text-lg font-semibold text-white">Aucun plan trouvé</h3>
+                    <h3 className="text-lg font-semibold text-white">{t.pricing.plans.noneFound}</h3>
                     <p className="text-sm text-muted-foreground max-w-xs mt-2">
                         {activeTab === 'provider'
-                            ? "Utilisez le bouton de synchronisation pour importer vos plans Stripe."
-                            : "Vous pouvez créer un plan gratuit ou un plan manuel pour vos utilisateurs."}
+                            ? t.pricing.plans.noneProviderDesc
+                            : t.pricing.plans.noneManualDesc}
                     </p>
                 </div>
             ) : (
@@ -98,7 +98,7 @@ export function PricingTabs({ plans, canEditPlans, t, providerName = 'Stripe' }:
 
                                 {isPopular && (
                                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-primary rounded-full text-[10px] font-bold tracking-wider text-white shadow-primary/50">
-                                        POPULAIRE
+                                        {t.pricing.plans.popular}
                                     </div>
                                 )}
 
@@ -107,23 +107,23 @@ export function PricingTabs({ plans, canEditPlans, t, providerName = 'Stripe' }:
                                         <h3 className="text-xl font-bold text-[var(--page-fg)]">{plan.name}</h3>
                                         <div className="flex items-baseline gap-1 mt-2">
                                             <span className="text-3xl font-extrabold tracking-tight text-white">{priceLabel}</span>
-                                            {plan.monthlyPrice > 0 && <span className="text-sm font-medium text-muted-foreground">/mois | {yearlyPriceLabel}/an</span>}
+                                            {plan.monthlyPrice > 0 && <span className="text-sm font-medium text-muted-foreground">{t.pricing.plans.perMonth} | {yearlyPriceLabel}{t.pricing.plans.perYear}</span>}
                                         </div>
                                     </div>
 
                                     <Badge variant="outline" className={`border ${plan.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'} px-2 py-0.5 rounded-full text-[10px] font-bold`}>
-                                        {plan.isActive ? 'ACTIF' : 'INACTIF'}
+                                        {plan.isActive ? t.pricing.plans.active : t.pricing.plans.inactive}
                                     </Badge>
                                 </div>
 
                                 <p className="text-sm text-muted-foreground mb-6 line-clamp-2">
-                                    {plan.description || "Aucune description fournie pour ce plan."}
+                                    {plan.description || t.pricing.plans.noDescription}
                                 </p>
 
                                 <div className="flex-1 space-y-3 mb-8">
                                     <div className="flex items-start gap-3 justify-center border-b border-[var(--glass-border)] pb-3 mb-3">
                                         <div className="text-center">
-                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Abonnés</p>
+                                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{t.pricing.plans.subscribers}</p>
                                             <p className="text-2xl font-bold text-primary">{plan._count.subscriptions}</p>
                                         </div>
                                     </div>
@@ -131,65 +131,65 @@ export function PricingTabs({ plans, canEditPlans, t, providerName = 'Stripe' }:
                                     <ul className="space-y-2.5 text-sm">
                                         <li className="flex items-center gap-3 text-slate-300">
                                             <div className="p-0.5 rounded-full bg-emerald-500/20 text-emerald-400"><Check className="w-3 h-3" strokeWidth={3} /></div>
-                                            <span className="font-medium text-white">{features.techWatches === -1 ? 'Illimités' : (features.techWatches || '0')}</span> TechWatches
+                                            <span className="font-medium text-white">{features.techWatches === -1 ? t.pricing.plans.unlimited : (features.techWatches || '0')}</span> TechWatches
                                         </li>
                                         {/* ... other features ... */}
                                         <li className="flex items-center gap-3 text-slate-300">
                                             <div className="p-0.5 rounded-full bg-emerald-500/20 text-emerald-400"><Check className="w-3 h-3" strokeWidth={3} /></div>
-                                            <span className="font-medium text-white">{features.notes === -1 ? 'Illimitées' : (features.notes || '0')}</span> Notes
+                                            <span className="font-medium text-white">{features.notes === -1 ? t.pricing.plans.unlimitedF : (features.notes || '0')}</span> Notes
                                         </li>
                                         <li className="flex items-center gap-3 text-slate-300">
                                             <div className="p-0.5 rounded-full bg-emerald-500/20 text-emerald-400"><Check className="w-3 h-3" strokeWidth={3} /></div>
-                                            <span className="font-medium text-white">{features.storage && features.storage >= 1073741824 ? (features.storage / 1073741824).toFixed(0) : (features.storage ? (features.storage / 1048576).toFixed(0) : '0')} {features.storage && features.storage >= 1073741824 ? 'GB' : 'MB'}</span> d'espace de stockage
+                                            <span className="font-medium text-white">{features.storage && features.storage >= 1073741824 ? (features.storage / 1073741824).toFixed(0) : (features.storage ? (features.storage / 1048576).toFixed(0) : '0')} {features.storage && features.storage >= 1073741824 ? 'GB' : 'MB'}</span> {t.pricing.plans.features.storage}
                                         </li>
                                         <li className="flex items-center gap-3 text-slate-300">
                                             {features.companion ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
-                                            <span className={features.companion ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>Assistant IA</span>
+                                            <span className={features.companion ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>{t.pricing.plans.features.companion}</span>
                                         </li>
                                         {/* Simplified features for brevity here, I'll copy the full list from page.tsx */}
                                         <li className="flex items-center gap-3 text-slate-300">
                                             {features.courses ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
-                                            <span className={features.courses ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>{features.courses === -1 ? 'Création de cours illimitée' : (Number(features.courses) > 0 ? `${features.courses} Création de cours` : 'Pas de création de cours')}</span>
+                                            <span className={features.courses ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>{features.courses === -1 ? t.pricing.plans.unlimitedF : (Number(features.courses) > 0 ? `${features.courses} Cours` : '0 Cours')}</span>
                                         </li>
                                         <li className="flex items-center gap-3 text-slate-300">
                                             {(Number(features.mindmaps) > 0) ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
                                             <span className={Number(features.mindmaps) > 0 ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>
-                                                {Number(features.mindmaps) === -1 ? 'Mindmaps illimitées' : Number(features.mindmaps) > 0 ? `${features.mindmaps} Mindmap(s)` : 'Mindmaps (désactivé)'}
+                                                {Number(features.mindmaps) === -1 ? t.pricing.plans.unlimitedF : Number(features.mindmaps) > 0 ? `${features.mindmaps} Mindmap(s)` : '0 Mindmaps'}
                                             </span>
                                         </li>
                                         <li className="flex items-center gap-3 text-slate-300">
                                             {(Number(features.roadmap) > 0) ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
                                             <span className={Number(features.roadmap) > 0 ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>
-                                                {Number(features.roadmap) === -1 ? 'Roadmaps illimités' : Number(features.roadmap) > 0 ? `${features.roadmap} Roadmap(s)` : 'Roadmaps (désactivé)'}
+                                                {Number(features.roadmap) === -1 ? t.pricing.plans.unlimited : Number(features.roadmap) > 0 ? `${features.roadmap} Roadmap(s)` : '0 Roadmaps'}
                                             </span>
                                         </li>
                                         <li className="flex items-center gap-3 text-slate-300">
                                             {features.agenda ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
-                                            <span className={features.agenda ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>Agenda Pro (Heatmap & Backlog)</span>
+                                            <span className={features.agenda ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>{t.pricing.plans.features.agenda}</span>
                                         </li>
                                         <li className="flex items-center gap-3 text-slate-300">
                                             {features.comparisons ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
-                                            <span className={features.comparisons ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>Comparatifs</span>
+                                            <span className={features.comparisons ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>{t.pricing.plans.features.comparisons}</span>
                                         </li>
                                         <li className="flex items-center gap-3 text-slate-300">
                                             {features.interviews ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
-                                            <span className={features.interviews ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>Simulateur & Quiz</span>
+                                            <span className={features.interviews ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>{t.pricing.plans.features.interviews}</span>
                                         </li>
                                         <li className="flex items-center gap-3 text-slate-300">
                                             {features.chatHistory ? <div className="p-0.5 rounded-full bg-primary/20 text-primary"><Check className="w-3 h-3" strokeWidth={3} /></div> : <div className="p-0.5 rounded-full bg-slate-500/20 text-slate-500"><XIcon className="w-3 h-3" strokeWidth={3} /></div>}
-                                            <span className={features.chatHistory ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>Historique des discussions IA</span>
+                                            <span className={features.chatHistory ? 'text-[var(--page-fg)]' : 'text-muted-foreground'}>{t.pricing.plans.features.chatHistory}</span>
                                         </li>
                                         <li className="flex items-center gap-3 text-slate-300">
                                             <div className="p-0.5 rounded-full bg-blue-500/20 text-blue-400"><Check className="w-3 h-3" strokeWidth={3} /></div>
-                                            <span className="font-medium text-white">{features.articles === -1 ? 'Illimités' : (features.articles || '0')}</span> Articles autorisés
+                                            <span className="font-medium text-white">{features.articles === -1 ? t.pricing.plans.unlimited : (features.articles || '0')}</span> {t.pricing.plans.features.articles}
                                         </li>
                                         <li className="flex items-center gap-3 text-slate-300">
                                             <div className="p-0.5 rounded-full bg-blue-500/20 text-blue-400"><Check className="w-3 h-3" strokeWidth={3} /></div>
-                                            <span className="font-medium text-white">{features.tasks === -1 ? 'Illimitées' : (features.tasks || '0')}</span> Tâches autorisées
+                                            <span className="font-medium text-white">{features.tasks === -1 ? t.pricing.plans.unlimitedF : (features.tasks || '0')}</span> {t.pricing.plans.features.tasks}
                                         </li>
                                         <li className="flex items-center gap-3 text-slate-300">
                                             <div className="p-0.5 rounded-full bg-blue-500/20 text-blue-400"><Check className="w-3 h-3" strokeWidth={3} /></div>
-                                            <span className="font-medium text-white">{features.resources === -1 ? 'Illimitées' : (features.resources || '0')}</span> Ressources autorisées
+                                            <span className="font-medium text-white">{features.resources === -1 ? t.pricing.plans.unlimitedF : (features.resources || '0')}</span> {t.pricing.plans.features.resources}
                                         </li>
                                     </ul>
                                 </div>
@@ -205,7 +205,7 @@ export function PricingTabs({ plans, canEditPlans, t, providerName = 'Stripe' }:
                                                 <div className="flex-1">
                                                     <CreatePlanDialog
                                                         initialData={plan as any}
-                                                        triggerLabel={isStripePlan ? "Gérer l'Offre & Trial" : (plan.monthlyPrice === 0 ? "Configurer le Pack Gratuit" : "Modifier le Plan")}
+                                                        triggerLabel={isStripePlan ? t.pricing.plans.manageOffer : (plan.monthlyPrice === 0 ? t.pricing.plans.configureFree : t.pricing.plans.edit)}
                                                         triggerVariant="outline"
                                                     />
                                                 </div>
@@ -214,7 +214,7 @@ export function PricingTabs({ plans, canEditPlans, t, providerName = 'Stripe' }:
                                             {/* Paddle : info à la place du bouton modifier */}
                                             {isPaddlePlan && (
                                                 <p className="flex-1 text-xs text-muted-foreground">
-                                                    Géré dans le Dashboard Paddle
+                                                    {t.sidebar.managedInPaddle}
                                                 </p>
                                             )}
 

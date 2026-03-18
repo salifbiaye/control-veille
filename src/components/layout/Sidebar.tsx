@@ -19,17 +19,18 @@ import { AdminLogoutButton } from '@/components/auth/AdminLogoutButton'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { useSidebar } from './SidebarLayout'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/locale-context'
 
 const BRAND_COLOR = 'var(--brand)'
 
-const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, exact: true, permission: 'VIEW_DASHBOARD' as const },
-    { name: 'Utilisateurs', href: '/dashboard/users', icon: Users, permission: 'VIEW_USERS' as const },
-    { name: 'Plans & Tarifs', href: '/dashboard/pricing', icon: CreditCard, permission: 'VIEW_PLANS' as const },
-    { name: 'Souscriptions', href: '/dashboard/subscriptions', icon: Receipt, permission: 'VIEW_ANALYTICS' as const },
-    { name: 'TechWatches', href: '/dashboard/techwatches', icon: Database, permission: 'VIEW_TECHWATCHES' as const },
-    { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, permission: 'VIEW_ANALYTICS' as const },
-    { name: 'Paramètres', href: '/dashboard/settings', icon: Settings, permission: 'VIEW_SETTINGS' as const },
+const NAV_ITEMS = [
+    { key: 'dashboard' as const, href: '/dashboard', icon: LayoutDashboard, exact: true, permission: 'VIEW_DASHBOARD' as const },
+    { key: 'users' as const, href: '/dashboard/users', icon: Users, permission: 'VIEW_USERS' as const },
+    { key: 'pricing' as const, href: '/dashboard/pricing', icon: CreditCard, permission: 'VIEW_PLANS' as const },
+    { key: 'subscriptions' as const, href: '/dashboard/subscriptions', icon: Receipt, permission: 'VIEW_ANALYTICS' as const },
+    { key: 'techwatches' as const, href: '/dashboard/techwatches', icon: Database, permission: 'VIEW_TECHWATCHES' as const },
+    { key: 'analytics' as const, href: '/dashboard/analytics', icon: BarChart3, permission: 'VIEW_ANALYTICS' as const },
+    { key: 'settings' as const, href: '/dashboard/settings', icon: Settings, permission: 'VIEW_SETTINGS' as const },
 ]
 
 interface SidebarProps {
@@ -44,6 +45,7 @@ interface SidebarProps {
 export function Sidebar({ user }: SidebarProps) {
     const pathname = usePathname()
     const { isMinimized, toggleSidebar } = useSidebar()
+    const t = useT()
 
     const userName = user?.name || 'Admin'
     const userRole = (user?.role || 'SUPER_ADMIN').replace(/_/g, ' ')
@@ -78,7 +80,7 @@ export function Sidebar({ user }: SidebarProps) {
                     boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
                     color: 'rgba(255,255,255,0.5)',
                 }}
-                title={isMinimized ? 'Agrandir le menu' : 'Réduire le menu'}
+                title={isMinimized ? t.sidebar.expandMenu : t.sidebar.collapseMenu}
             >
                 {isMinimized
                     ? <ChevronRight className="w-3.5 h-3.5" />
@@ -123,12 +125,13 @@ export function Sidebar({ user }: SidebarProps) {
                     'px-2 mb-2 text-[10px] font-semibold uppercase tracking-widest whitespace-nowrap transition-all duration-300 overflow-hidden',
                     isMinimized ? 'max-w-0 opacity-0 group-hover:max-w-[120px] group-hover:opacity-100' : 'max-w-[120px] opacity-100'
                 )} style={{ color: 'rgba(248,250,252,0.30)' }}>
-                    Navigation
+                    {t.nav.navigation}
                 </p>
 
-                {navigation
+                {NAV_ITEMS
                     .filter(item => hasPermission(user?.role as AdminRole || 'READ_ONLY', item.permission))
-                    .map(({ href, name, icon: Icon, exact }) => {
+                    .map(({ href, key, icon: Icon, exact }) => {
+                        const name = t.nav[key]
                         const isActive = exact ? pathname === href : pathname.startsWith(href)
                         return (
                             <Link

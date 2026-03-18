@@ -8,11 +8,10 @@ import { Input } from '@/components/ui/input'
 import { createPromotion } from '@/features/pricing/actions/pricing.actions'
 import type { PromotionData } from '@/features/pricing/actions/pricing.actions'
 
-import { useT, useLocale } from '@/lib/i18n/locale-context'
+import { useT } from '@/lib/i18n/locale-context'
 
 export function CreatePromoDialog({ plans }: { plans: { id: string; name: string }[] }) {
     const t = useT()
-    const { locale } = useLocale()
     const [isOpen, setIsOpen] = useState(false)
     const [pending, startTransition] = useTransition()
     const [error, setError] = useState<string | null>(null)
@@ -31,14 +30,14 @@ export function CreatePromoDialog({ plans }: { plans: { id: string; name: string
         e.preventDefault()
         setError(null)
 
-        if (!formData.code) return setError(locale === 'fr' ? 'Code promo requis' : 'Promo code required')
+        if (!formData.code) return setError(t.pricing.promos.codeRequired)
 
         startTransition(async () => {
             const res = await createPromotion(formData)
             if (res.success) {
                 setIsOpen(false)
             } else {
-                setError(res.error || (locale === 'fr' ? 'Erreur inconnue' : 'Unknown error'))
+                setError(res.error || t.pricing.promos.unknownError)
             }
         })
     }
@@ -143,7 +142,7 @@ export function CreatePromoDialog({ plans }: { plans: { id: string; name: string
                                         className="settings-input font-mono h-11"
                                     />
                                     {formData.discountType === 'fixed' && (
-                                        <p className="text-[10px] text-muted-foreground ml-1">{locale === 'fr' ? 'En centimes :' : 'In cents :'} {formData.discountValue} €</p>
+                                        <p className="text-[10px] text-muted-foreground ml-1">{t.pricing.promos.inCents} {formData.discountValue} €</p>
                                     )}
                                 </div>
                             </div>
