@@ -148,7 +148,7 @@ export async function getClientUsers(): Promise<ClientUser[]> {
           MAX(p.name) AS "planName",
           COALESCE(
             MAX((p.features->>'storage')::numeric::bigint),
-            CASE WHEN BOOL_OR(u."isPremiumLifetime") THEN (SELECT (features->>'storage')::numeric::bigint FROM "plans" WHERE slug = 'pro' LIMIT 1) ELSE NULL END,
+            CASE WHEN BOOL_OR(u."isPremiumLifetime") THEN 10737418240 ELSE NULL END,
             (SELECT (features->>'storage')::numeric::bigint FROM "plans" WHERE slug = 'free' LIMIT 1),
             1073741824
           ) AS "storageLimit"
@@ -184,7 +184,7 @@ export async function getClientUserById(id: string): Promise<ClientUser | null> 
         MAX(p.name) AS "planName",
         COALESCE(
           MAX((p.features->>'storage')::numeric::bigint),
-          CASE WHEN BOOL_OR(u."isPremiumLifetime") THEN (SELECT (features->>'storage')::numeric::bigint FROM "plans" WHERE slug = 'pro' LIMIT 1) ELSE NULL END,
+          CASE WHEN BOOL_OR(u."isPremiumLifetime") THEN 10737418240 ELSE NULL END,
           (SELECT (features->>'storage')::numeric::bigint FROM "plans" WHERE slug = 'free' LIMIT 1),
           1073741824
         ) AS "storageLimit"
