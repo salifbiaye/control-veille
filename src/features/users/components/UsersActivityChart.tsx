@@ -1,7 +1,7 @@
 "use client"
 
 import { TrendingUp, Users } from "lucide-react"
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Legend } from "recharts"
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import {
   Card,
   CardContent,
@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/card"
 import {
   ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
@@ -108,24 +110,7 @@ export function UsersActivityChart({ data, title, description }: UsersActivityCh
               cursor={{ stroke: 'rgba(255, 255, 255, 0.1)', strokeWidth: 2 }}
               content={<ChartTooltipContent indicator="dot" />}
             />
-            <Legend
-              verticalAlign="top"
-              align="right"
-              iconType="circle"
-              content={(props) => {
-                const { payload } = props;
-                return (
-                  <div className="flex gap-4 justify-end mb-4 text-[10px] font-bold tracking-tight uppercase">
-                    {payload?.map((entry: any, index: number) => (
-                      <div key={`item-${index}`} className="flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                        <span className="text-muted-foreground">{entry.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              }}
-            />
+            <ChartLegend content={<ChartLegendContent />} />
             {ROLE_CONFIG.map(role => (
               <Area
                 key={role.key}

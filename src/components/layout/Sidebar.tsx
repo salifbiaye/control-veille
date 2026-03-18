@@ -8,12 +8,12 @@ import {
     Settings,
     Database,
     BarChart3,
-    Shield,
     CreditCard,
     Receipt,
     ChevronRight,
     PanelLeftClose,
 } from 'lucide-react'
+import Image from 'next/image'
 import { ADMIN_PERMISSIONS, AdminRole, hasPermission } from '@/lib/permissions'
 import { AdminLogoutButton } from '@/components/auth/AdminLogoutButton'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
@@ -95,13 +95,13 @@ export function Sidebar({ user }: SidebarProps) {
             >
                 <div className={cn('flex items-center w-full', isMinimized ? 'justify-center gap-0 group-hover:justify-start group-hover:gap-2.5' : 'gap-2.5')}>
                     <div
-                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
                         style={{
                             background: `color-mix(in srgb, ${BRAND_COLOR} 13%, transparent)`,
                             border: `1px solid color-mix(in srgb, ${BRAND_COLOR} 27%, transparent)`,
                         }}
                     >
-                        <Shield className="w-4 h-4" style={{ color: BRAND_COLOR }} />
+                        <Image src="/apple-touch-icon.png" alt="TechWatches" width={20} height={20} className="w-5 h-5 object-contain" />
                     </div>
                     <div className={cn('min-w-0 transition-all duration-300 overflow-hidden', isMinimized ? 'max-w-0 opacity-0 group-hover:max-w-[140px] group-hover:opacity-100' : 'max-w-[140px] opacity-100')}>
                         <p className="font-bold text-sm truncate whitespace-nowrap" style={{ color: '#F8FAFC' }}>TechWatches</p>

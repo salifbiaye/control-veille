@@ -106,7 +106,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.546 0.245 262.881);
+  --primary: oklch(0.558 0.248 292);
   /* sky-600 */
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
@@ -142,7 +142,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.546 0.245 262.881);
+  --primary: oklch(0.558 0.248 292);
   /* sky-600 */
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.269 0 0);
@@ -277,9 +277,9 @@
   --navbar-blur: var(--glass-blur);
 
   /* Dynamic brand */
-  --brand: #0284C7;
-  --brand-light: #38BDF8;
-  /* sky-400 */
+  --brand: #7C3AED;
+  --brand-light: #A78BFA;
+  --brand-rgb: 124, 58, 237;
 }
 
 .dark {

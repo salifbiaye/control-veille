@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { AlertTriangle, X, Trash2, ShieldAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ interface ConfirmModalProps {
     cancelLabel?: string
     variant?: 'danger' | 'warning'
     isPending?: boolean
+    children?: React.ReactNode
     onConfirm: () => void
     onCancel: () => void
 }
@@ -25,6 +26,7 @@ export function ConfirmModal({
     cancelLabel = 'Annuler',
     variant = 'danger',
     isPending = false,
+    children,
     onConfirm,
     onCancel,
 }: ConfirmModalProps) {
@@ -93,6 +95,7 @@ export function ConfirmModal({
                     <p className="text-sm leading-relaxed" style={{ color: 'var(--txt-sub)' }}>
                         {description}
                     </p>
+                    {children && <div className="mt-4">{children}</div>}
                 </div>
 
                 {/* Actions */}
