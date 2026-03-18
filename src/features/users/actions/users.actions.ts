@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/session'
 import { revalidatePath } from 'next/cache'
-import { stripe } from '@/lib/stripe'
+import { getPaymentProvider } from '@/lib/payment'
 import { sendBanEmail, sendUnbanEmail } from '@/lib/mailer'
 
 // ─────────────────────────────────────────────────────────────
@@ -246,26 +246,27 @@ export async function banUser(userId: string, reason?: string): Promise<{ succes
             return { success: false, error: 'Impossible de bannir un administrateur' }
         }
 
-        // 🔒 Annuler l'abonnement Stripe si présent
+        // 🔒 Annuler l'abonnement via le provider (Stripe ou Paddle)
         const activeSub = await prisma.subscription.findUnique({
             where: { userId },
-            select: { stripeSubscriptionId: true, status: true }
+            select: { stripeSubscriptionId: true, paddleSubscriptionId: true, status: true }
         })
 
-        if (activeSub && (activeSub as any).stripeSubscriptionId && activeSub.status === 'active') {
-            try {
-                await stripe.subscriptions.update((activeSub as any).stripeSubscriptionId, {
-                    cancel_at_period_end: false,
-                })
-                await stripe.subscriptions.cancel((activeSub as any).stripeSubscriptionId)
+        if (activeSub && activeSub.status === 'active') {
+            const subId = activeSub.stripeSubscriptionId || activeSub.paddleSubscriptionId
+            if (subId) {
+                try {
+                    const provider = getPaymentProvider()
+                    await provider.cancelSubscription(subId)
 
-                await prisma.subscription.update({
-                    where: { userId },
-                    data: { status: 'canceled' }
-                })
-            } catch (stripeError) {
-                console.error('[BAN_USER] Stripe cancellation error:', stripeError)
-                // On continue quand même le ban en base
+                    await prisma.subscription.update({
+                        where: { userId },
+                        data: { status: 'canceled' }
+                    })
+                } catch (cancelError) {
+                    console.error('[BAN_USER] Subscription cancellation error:', cancelError)
+                    // On continue quand même le ban en base
+                }
             }
         }
 
@@ -274,9 +275,13 @@ export async function banUser(userId: string, reason?: string): Promise<{ succes
             data: { role: 'BANNED' }
         })
 
-        // 📧 Email de suspension (fail silently)
+        // 📧 Email de suspension
         if (process.env.SMTP_HOST) {
-            sendBanEmail({ to: targetUser.email, name: targetUser.name || undefined, reason }).catch(() => {})
+            try {
+                await sendBanEmail({ to: targetUser.email, name: targetUser.name || undefined, reason })
+            } catch (emailError) {
+                console.error('[BAN_USER] Email error:', emailError)
+            }
         }
 
         revalidatePath('/dashboard/users')
@@ -299,9 +304,13 @@ export async function unbanUser(userId: string): Promise<{ success: boolean; err
             data: { role: 'USER' }
         })
 
-        // 📧 Email de réactivation (fail silently)
+        // 📧 Email de réactivation
         if (process.env.SMTP_HOST && targetUser) {
-            sendUnbanEmail({ to: targetUser.email, name: targetUser.name || undefined }).catch(() => {})
+            try {
+                await sendUnbanEmail({ to: targetUser.email, name: targetUser.name || undefined })
+            } catch (emailError) {
+                console.error('[UNBAN_USER] Email error:', emailError)
+            }
         }
 
         revalidatePath('/dashboard/users')

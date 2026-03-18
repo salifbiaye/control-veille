@@ -404,6 +404,7 @@ function ClientUsersTab({ data }: { data: ClientUser[] }) {
         value?: boolean
     }>({ isOpen: false, type: 'lifetime', userId: '' })
     const [banReason, setBanReason] = useState(BAN_REASONS[0])
+    const [customBanReason, setCustomBanReason] = useState('')
 
     const [refundModal, setRefundModal] = useState<{ isOpen: boolean, subscriptionId: string | null }>({
         isOpen: false,
@@ -427,7 +428,8 @@ function ClientUsersTab({ data }: { data: ClientUser[] }) {
                 const res = await unbanUser(userId)
                 if (res.success) setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: 'USER' } : u))
             } else if (type === 'ban') {
-                const res = await banUser(userId, banReason)
+                const finalReason = banReason === 'Autre' ? (customBanReason.trim() || 'Autre') : banReason
+                const res = await banUser(userId, finalReason)
                 if (res.success) {
                     setUsers(prev => prev.map(u =>
                         u.id === userId ? { ...u, role: 'BANNED', subscriptionStatus: 'canceled' } : u
@@ -688,7 +690,7 @@ function ClientUsersTab({ data }: { data: ClientUser[] }) {
                         </label>
                         <select
                             value={banReason}
-                            onChange={e => setBanReason(e.target.value)}
+                            onChange={e => { setBanReason(e.target.value); setCustomBanReason('') }}
                             className="w-full rounded-lg px-3 py-2 text-sm outline-none"
                             style={{
                                 background: 'rgba(255,255,255,0.04)',
@@ -700,6 +702,20 @@ function ClientUsersTab({ data }: { data: ClientUser[] }) {
                                 <option key={r} value={r} style={{ background: '#1a1a1e' }}>{r}</option>
                             ))}
                         </select>
+                        {banReason === 'Autre' && (
+                            <input
+                                type="text"
+                                placeholder="Précisez le motif..."
+                                value={customBanReason}
+                                onChange={e => setCustomBanReason(e.target.value)}
+                                className="w-full rounded-lg px-3 py-2 text-sm outline-none mt-2"
+                                style={{
+                                    background: 'rgba(255,255,255,0.04)',
+                                    border: '1px solid rgba(239,68,68,0.25)',
+                                    color: 'var(--page-fg)',
+                                }}
+                            />
+                        )}
                         <p className="text-[11px] mt-1.5" style={{ color: 'rgba(248,250,252,0.35)' }}>
                             Ce motif sera inclus dans l'email envoyé à l'utilisateur.
                         </p>
