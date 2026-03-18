@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { requirePermission } from '@/lib/session'
 import { revalidatePath } from 'next/cache'
 import { stripe } from '@/lib/stripe'
+import { sendBanEmail, sendUnbanEmail } from '@/lib/mailer'
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -234,11 +235,11 @@ export async function togglePremiumLifetime(
 // Ban User
 // ─────────────────────────────────────────────────────────────
 
-export async function banUser(userId: string): Promise<{ success: boolean; error?: string }> {
+export async function banUser(userId: string, reason?: string): Promise<{ success: boolean; error?: string }> {
     try {
         await requirePermission('EDIT_USERS')
 
-        const targetUser = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+        const targetUser = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, email: true, name: true } })
         if (!targetUser) return { success: false, error: 'Utilisateur non trouvé' }
 
         if (targetUser.role === 'SUPER_ADMIN' || targetUser.role === 'ADMIN') {
@@ -272,6 +273,12 @@ export async function banUser(userId: string): Promise<{ success: boolean; error
             where: { id: userId },
             data: { role: 'BANNED' }
         })
+
+        // 📧 Email de suspension (fail silently)
+        if (process.env.SMTP_HOST) {
+            sendBanEmail({ to: targetUser.email, name: targetUser.name || undefined, reason }).catch(() => {})
+        }
+
         revalidatePath('/dashboard/users')
         revalidatePath('/dashboard/pricing')
         return { success: true }
