@@ -118,7 +118,6 @@ export function UsersActivityChart({ data, title, description }: UsersActivityCh
               cursor={{ stroke: 'rgba(255, 255, 255, 0.1)', strokeWidth: 2 }}
               content={<ChartTooltipContent indicator="dot" />}
             />
-            <ChartLegend content={<ChartLegendContent />} />
             {activeRoles.map(role => (
               <Area
                 key={role.key}
@@ -134,6 +133,18 @@ export function UsersActivityChart({ data, title, description }: UsersActivityCh
             ))}
           </AreaChart>
         </ChartContainer>
+        {/* Custom Legend */}
+        <div className="flex items-center justify-center gap-4 mt-4">
+          {activeRoles.map(role => (
+            <div key={role.key} className="flex items-center gap-1.5">
+              <div
+                className="h-2 w-2 shrink-0 rounded-[2px]"
+                style={{ backgroundColor: role.color }}
+              />
+              <span className="text-xs text-muted-foreground">{role.label}</span>
+            </div>
+          ))}
+        </div>
       </CardContent>
       <CardFooter className="pt-4 pb-6 border-t border-[var(--glass-border)] bg-[rgba(255,255,255,0.01)]">
         <div className="flex w-full items-center justify-between text-sm">
