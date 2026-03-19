@@ -36,7 +36,7 @@ interface UsersActivityChartProps {
 }
 
 const ROLE_CONFIG = [
-  { key: 'USER', color: '#3B82F6', label: 'Clients' },
+  { key: 'USER', color: '#3be0f6ff', label: 'Clients' },
   { key: 'ADMIN', color: '#F59E0B', label: 'Admins' },
   { key: 'SUPER_ADMIN', color: '#8B5CF6', label: 'Super' },
   { key: 'SUPPORT', color: '#EF4444', label: 'Support' },
@@ -62,7 +62,7 @@ export function UsersActivityChart({ data, title, description }: UsersActivityCh
   const avg = data.length > 0 ? (total / data.length).toFixed(1) : 0
 
   const chartConfig = {
-    USER: { label: 'Client', color: "#3B82F6" },
+    USER: { label: 'Client', color: "#3be0f6ff" },
     ADMIN: { label: 'Admin', color: "#F59E0B" },
     SUPER_ADMIN: { label: 'Super Admin', color: "#8B5CF6" },
     SUPPORT: { label: 'Support', color: "#EF4444" },
@@ -128,7 +128,7 @@ export function UsersActivityChart({ data, title, description }: UsersActivityCh
                 stroke={role.color}
                 strokeWidth={2}
                 activeDot={{ r: 4, strokeWidth: 0 }}
-                stackId="1"
+            
               />
             ))}
           </AreaChart>
