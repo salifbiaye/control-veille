@@ -123,7 +123,7 @@ export async function getAnalyticsStats(): Promise<AnalyticsStats> {
     // Add "Lifetime" users for comparison in donut chart
     const lifetimeUsersCount = await prisma.user.count({ where: { role: 'USER', isPremiumLifetime: true } })
     if (lifetimeUsersCount > 0) {
-        distributionMap.set('Pro (Lifetime)', lifetimeUsersCount)
+        distributionMap.set('Lifetime Premium', lifetimeUsersCount)
     }
 
     // Add "Free" users for comparison (excluding assigned plans and lifetime)
