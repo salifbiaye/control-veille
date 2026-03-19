@@ -46,6 +46,14 @@ const ROLE_CONFIG = [
 export function UsersActivityChart({ data, title, description }: UsersActivityChartProps) {
   const t = useT()
 
+  // Filter to only show roles that have data
+  const activeRoles = ROLE_CONFIG.filter(role =>
+    data.some(item => {
+      const value = item[role.key as keyof UserGrowthData]
+      return typeof value === 'number' && value > 0
+    })
+  )
+
   // Calculate total registrations across all roles for summary
   const total = data.reduce((sum, item) => {
     return sum + (item.USER || 0) + (item.ADMIN || 0) + (item.SUPER_ADMIN || 0) + (item.SUPPORT || 0) + (item.READ_ONLY || 0)
@@ -111,7 +119,7 @@ export function UsersActivityChart({ data, title, description }: UsersActivityCh
               content={<ChartTooltipContent indicator="dot" />}
             />
             <ChartLegend content={<ChartLegendContent />} />
-            {ROLE_CONFIG.map(role => (
+            {activeRoles.map(role => (
               <Area
                 key={role.key}
                 dataKey={role.key}
