@@ -116,13 +116,6 @@ export default async function AnalyticsPage() {
                                     >
                                         {mrrFormatted}
                                     </span>
-                                    <span
-                                        className="mb-1 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-sm font-bold"
-                                        style={{ background: 'rgba(16,185,129,0.10)', color: '#10B981', border: '1px solid rgba(16,185,129,0.18)' }}
-                                    >
-                                        <TrendingUp className="w-3.5 h-3.5" />
-                                        {growthPct}
-                                    </span>
                                 </div>
                                 <p className="text-xs mt-3" style={{ color: 'var(--txt-muted)' }}>
                                     {a.updated}
