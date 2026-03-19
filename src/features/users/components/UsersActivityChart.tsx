@@ -128,7 +128,7 @@ export function UsersActivityChart({ data, title, description }: UsersActivityCh
                 stroke={role.color}
                 strokeWidth={2}
                 activeDot={{ r: 4, strokeWidth: 0 }}
-            
+              
               />
             ))}
           </AreaChart>
