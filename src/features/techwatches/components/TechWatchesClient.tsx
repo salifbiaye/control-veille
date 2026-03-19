@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect, useMemo, useTransition } from 'react'
-import { Database, Search, Activity, FileText, CheckCircle2, Folder, Eye, Trash2, MoreHorizontal, ExternalLink } from 'lucide-react'
+import { useState, useEffect, useTransition } from 'react'
+import { Database, Search, Activity, FileText, CheckCircle2, Folder, Eye, Trash2, MoreHorizontal, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -16,40 +18,28 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useT } from '@/lib/i18n/locale-context'
 import { TechWatchesActivityChart } from './TechWatchesActivityChart'
 import { getAnalyticsStats } from '@/features/analytics/actions/analytics.actions'
-import { deleteTechWatch } from '@/features/techwatches/actions/techwatches.actions'
+import { deleteTechWatch, type TechWatchDetails, type PaginatedResult } from '@/features/techwatches/actions/techwatches.actions'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { TechWatchDetailSheet } from './TechWatchDetailSheet'
 
-interface TechWatch {
-    id: string
-    name: string
-    description: string | null
-    iconEmoji: string | null
-    color: string | null
-    logoUrl: string | null
-    createdAt: Date
-    updatedAt: Date
-    user: {
-        name: string | null
-        email: string
-        image: string | null
-    }
-    _count: {
-        articles: number
-        tasks: number
-        resources: number
-    }
-}
-
-export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) {
+export function TechWatchesClient({ initial }: { initial: PaginatedResult<TechWatchDetails> }) {
     const t = useT()
-    const [searchTerm, setSearchTerm] = useState('')
+    const router = useRouter()
+    const searchParams = useSearchParams()
+    const [techWatches, setTechWatches] = useState(initial.data)
+    const { meta } = initial
+    const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '')
     const [growthData, setGrowthData] = useState<any[]>([])
     const [isPending, startTransition] = useTransition()
     const [deleteId, setDeleteId] = useState<string | null>(null)
-    const [selectedTW, setSelectedTW] = useState<TechWatch | null>(null)
+    const [selectedTW, setSelectedTW] = useState<TechWatchDetails | null>(null)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [logoErrors, setLogoErrors] = useState<Record<string, boolean>>({})
+
+    // Sync state if props change
+    useEffect(() => {
+        setTechWatches(initial.data)
+    }, [initial.data])
 
     useEffect(() => {
         getAnalyticsStats().then(stats => {
@@ -57,11 +47,23 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
         })
     }, [])
 
+    const handleSearch = (value: string) => {
+        setSearchTerm(value)
+        const params = new URLSearchParams(searchParams.toString())
+        if (value) {
+            params.set('search', value)
+        } else {
+            params.delete('search')
+        }
+        params.delete('page') // Reset to page 1 on search
+        router.push(`/dashboard/techwatches?${params.toString()}`)
+    }
+
     const handleDelete = (id: string) => {
         setDeleteId(id)
     }
 
-    const handleViewDetails = (tw: TechWatch) => {
+    const handleViewDetails = (tw: TechWatchDetails) => {
         setSelectedTW(tw)
         setIsSheetOpen(true)
     }
@@ -77,20 +79,10 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
             const res = await deleteTechWatch(deleteId)
             if (res.success) {
                 setDeleteId(null)
+                router.refresh()
             }
         })
     }
-
-    const filtered = useMemo(() => {
-        if (!searchTerm) return techWatches
-        const search = searchTerm.toLowerCase()
-        return techWatches.filter(tw =>
-            tw.name.toLowerCase().includes(search) ||
-            (tw.description || '').toLowerCase().includes(search) ||
-            (tw.user?.name || '').toLowerCase().includes(search) ||
-            (tw.user?.email || '').toLowerCase().includes(search)
-        )
-    }, [techWatches, searchTerm])
 
     return (
         <div className="space-y-6">
@@ -117,7 +109,7 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
                             type="text"
                             placeholder={t.actions.search}
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => handleSearch(e.target.value)}
                             className="w-full h-11 rounded-xl bg-[rgba(255,255,255,0.01)] border border-[var(--glass-border)] px-4 pl-12 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all font-medium"
                         />
                     </div>
@@ -135,13 +127,13 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.length === 0 ? (
+                            {techWatches.length === 0 ? (
                                 <tr>
                                     <td colSpan={5} className="text-center py-12 text-muted-foreground italic">
                                         {t.techwatches.table.empty}
                                     </td>
                                 </tr>
-                            ) : filtered.map((tw) => {
+                            ) : techWatches.map((tw) => {
                                 const hasActivity = tw._count.articles > 0 || tw._count.tasks > 0 || tw._count.resources > 0
                                 const userInitial = (tw.user?.name || tw.user?.email || '?').charAt(0).toUpperCase()
 
@@ -272,6 +264,27 @@ export function TechWatchesClient({ data: techWatches }: { data: TechWatch[] }) 
                         </tbody>
                     </table>
                 </div>
+
+                {/* Pagination */}
+                {meta.totalPages > 1 && (
+                    <div className="flex items-center justify-between px-5 py-4 border-t border-[var(--glass-border)] bg-[rgba(255,255,255,0.01)]">
+                        <span className="text-sm text-muted-foreground font-medium">
+                            Page {meta.page} / {meta.totalPages} · Total: {meta.total}
+                        </span>
+                        <div className="flex gap-2">
+                            <Link href={meta.page <= 1 ? '#' : `/dashboard/techwatches?page=${meta.page - 1}${searchTerm ? `&search=${searchTerm}` : ''}`} passHref>
+                                <Button variant="outline" size="icon" disabled={meta.page <= 1} className="h-8 w-8 bg-[var(--card-bg)] border-[var(--chrome-border)] hover:bg-slate-800">
+                                    <ChevronLeft className="w-4 h-4" />
+                                </Button>
+                            </Link>
+                            <Link href={meta.page >= meta.totalPages ? '#' : `/dashboard/techwatches?page=${meta.page + 1}${searchTerm ? `&search=${searchTerm}` : ''}`} passHref>
+                                <Button variant="outline" size="icon" disabled={meta.page >= meta.totalPages} className="h-8 w-8 bg-[var(--card-bg)] border-[var(--chrome-border)] hover:bg-slate-800">
+                                    <ChevronRight className="w-4 h-4" />
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <TechWatchDetailSheet
