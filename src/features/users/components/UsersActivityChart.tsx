@@ -38,9 +38,9 @@ interface UsersActivityChartProps {
 const ROLE_CONFIG = [
   { key: 'USER', color: '#3B82F6', label: 'Clients' },
   { key: 'ADMIN', color: '#F59E0B', label: 'Admins' },
-  { key: 'SUPER_ADMIN', color: '#EF4444', label: 'Super' },
-  { key: 'SUPPORT', color: '#8B5CF6', label: 'Support' },
-  { key: 'READ_ONLY', color: '#64748B', label: 'Lecteurs' },
+  { key: 'SUPER_ADMIN', color: '#8B5CF6', label: 'Super' },
+  { key: 'SUPPORT', color: '#EF4444', label: 'Support' },
+  { key: 'READ_ONLY', color: '#22C55E', label: 'Lecteurs' },
 ]
 
 export function UsersActivityChart({ data, title, description }: UsersActivityChartProps) {
@@ -56,9 +56,9 @@ export function UsersActivityChart({ data, title, description }: UsersActivityCh
   const chartConfig = {
     USER: { label: 'Client', color: "#3B82F6" },
     ADMIN: { label: 'Admin', color: "#F59E0B" },
-    SUPER_ADMIN: { label: 'Super Admin', color: "#EF4444" },
-    SUPPORT: { label: 'Support', color: "#8B5CF6" },
-    READ_ONLY: { label: 'Lecture Seule', color: "#64748B" },
+    SUPER_ADMIN: { label: 'Super Admin', color: "#8B5CF6" },
+    SUPPORT: { label: 'Support', color: "#EF4444" },
+    READ_ONLY: { label: 'Lecture Seule', color: "#22C55E" },
   } satisfies ChartConfig
 
   return (
