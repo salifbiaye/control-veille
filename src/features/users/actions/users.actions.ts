@@ -249,11 +249,11 @@ export async function banUser(userId: string, reason?: string): Promise<{ succes
         // 🔒 Annuler l'abonnement via le provider (Stripe ou Paddle)
         const activeSub = await prisma.subscription.findUnique({
             where: { userId },
-            select: { stripeSubscriptionId: true, paddleSubscriptionId: true, status: true }
-        })
+            select: { stripeSubscriptionId: true, paddleSubscriptionId: true, lemonSubscriptionId: true, status: true }
+        } as any)
 
         if (activeSub && activeSub.status === 'active') {
-            const subId = activeSub.stripeSubscriptionId || activeSub.paddleSubscriptionId
+            const subId = activeSub.stripeSubscriptionId || activeSub.paddleSubscriptionId || (activeSub as any).lemonSubscriptionId
             if (subId) {
                 try {
                     const provider = getPaymentProvider()

@@ -6,6 +6,7 @@
 import type { PaymentProvider } from './types'
 import { StripeProvider } from './stripe.provider'
 import { PaddleProvider } from './paddle.provider'
+import { LemonSqueezyProvider } from './lemonsqueezy.provider'
 
 let _provider: PaymentProvider | null = null
 
@@ -16,6 +17,8 @@ export function getPaymentProvider(): PaymentProvider {
 
     if (name === 'paddle') {
         _provider = new PaddleProvider()
+    } else if (name === 'lemonsqueezy') {
+        _provider = new LemonSqueezyProvider()
     } else {
         _provider = new StripeProvider()
     }

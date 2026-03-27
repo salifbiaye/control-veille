@@ -23,6 +23,7 @@ model user {
   role              String        @default("USER")
   stripeCustomerId  String?       @unique
   paddleCustomerId  String?       @unique
+  lemonCustomerId   String?       @unique
   chatSessions      ChatSession[]
   folders           Folder[]
   resources         Resource[]
@@ -91,6 +92,9 @@ model Plan {
   paddleProductId      String?
   paddlePriceIdMonthly String?        @unique
   paddlePriceIdYearly  String?        @unique
+  lemonProductId        String?
+  lemonVariantIdMonthly String?       @unique
+  lemonVariantIdYearly  String?       @unique
   subscriptions        Subscription[]
   promotions           Promotion[]
 
@@ -108,6 +112,7 @@ model Subscription {
   cancelAtPeriodEnd    Boolean   @default(false)
   stripeSubscriptionId String?   @unique
   paddleSubscriptionId String?   @unique
+  lemonSubscriptionId  String?   @unique
   pricePaid            Int       @default(0)
   plan                 Plan      @relation(fields: [planId], references: [id])
   user                 user      @relation(fields: [userId], references: [id])

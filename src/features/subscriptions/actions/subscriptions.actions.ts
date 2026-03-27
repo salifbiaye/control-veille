@@ -85,13 +85,14 @@ export async function refundSubscription(subscriptionId: string) {
             where: { id: subscriptionId }
         })
 
-        if (!sub?.stripeSubscriptionId && !sub?.paddleSubscriptionId) {
+        if (!sub?.stripeSubscriptionId && !sub?.paddleSubscriptionId && !(sub as any)?.lemonSubscriptionId) {
             return { success: false, error: "Pas d'identifiant de paiement trouve pour cet abonnement" }
         }
 
         const result = await getPaymentProvider().refundSubscription({
             stripeSubscriptionId: sub.stripeSubscriptionId,
             paddleSubscriptionId: sub.paddleSubscriptionId,
+            lemonSubscriptionId: (sub as any).lemonSubscriptionId,
         })
 
         if (!result.success) return result

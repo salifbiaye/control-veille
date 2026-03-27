@@ -43,6 +43,7 @@ export interface PromoCreateData {
 export interface RefundSubParams {
     stripeSubscriptionId?: string | null
     paddleSubscriptionId?: string | null
+    lemonSubscriptionId?: string | null
 }
 
 // ─────────────────────────────────────────────────────────────
