@@ -5,6 +5,7 @@ import { requirePermission } from '@/lib/session'
 import { revalidatePath } from 'next/cache'
 import { getPaymentProvider } from '@/lib/payment'
 import { sendBanEmail, sendUnbanEmail } from '@/lib/mailer'
+import { invalidateUserPlanCache } from '@/lib/redis'
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -223,6 +224,8 @@ export async function togglePremiumLifetime(
             where: { id: userId },
             data: { isPremiumLifetime: value } as any,
         })
+        // Invalider le cache Redis pour que app-client voit le changement immédiatement
+        await invalidateUserPlanCache(userId)
         revalidatePath('/dashboard/users')
         return { success: true }
     } catch (error) {
@@ -274,6 +277,7 @@ export async function banUser(userId: string, reason?: string): Promise<{ succes
             where: { id: userId },
             data: { role: 'BANNED' }
         })
+        await invalidateUserPlanCache(userId)
 
         // 📧 Email de suspension
         if (process.env.SMTP_HOST) {
@@ -303,6 +307,7 @@ export async function unbanUser(userId: string): Promise<{ success: boolean; err
             where: { id: userId },
             data: { role: 'USER' }
         })
+        await invalidateUserPlanCache(userId)
 
         // 📧 Email de réactivation
         if (process.env.SMTP_HOST && targetUser) {
